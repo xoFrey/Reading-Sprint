@@ -15,7 +15,7 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
 
   const sprint = await startSprint(
     interaction.guildId!,
-    interaction.channelId,
+    interaction.channelId!,
     interaction.user.id,
     duration
   );

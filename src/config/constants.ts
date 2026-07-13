@@ -10,6 +10,7 @@ export const CustomId = {
   SPRINT_JOIN: "sprint_join",
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
+  PARTICIPANT_UPDATE_PAGE: "participant_update_page",
   PARTICIPANT_PAUSE: "participant_pause",
   PARTICIPANT_RESUME: "participant_resume",
   PARTICIPANT_LEAVE: "participant_leave",
@@ -17,6 +18,7 @@ export const CustomId = {
   MODAL_SCHEDULE: "modal_schedule",
   MODAL_JOIN: "modal_join",
   MODAL_SWITCH_BOOK: "modal_switch_book",
+  MODAL_UPDATE_PAGE: "modal_update_page",
 } as const;
 
 // Baut eine customId inkl. Zusatzdaten (z.B. Sprint- oder Participant-ID).

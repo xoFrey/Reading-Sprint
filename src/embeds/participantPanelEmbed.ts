@@ -45,6 +45,11 @@ export function buildParticipantPanel(
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.PARTICIPANT_UPDATE_PAGE, participant.id))
+      .setLabel("Seite aktualisieren")
+      .setEmoji("✏️")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
       .setCustomId(buildCustomId(CustomId.PARTICIPANT_SWITCH_BOOK, participant.id))
       .setLabel("Buch wechseln")
       .setEmoji("📖")

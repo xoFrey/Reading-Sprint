@@ -8,6 +8,7 @@ import * as endButton from "../buttons/endButton";
 import * as leaderboardButton from "../buttons/leaderboardButton";
 import * as joinButton from "../buttons/joinButton";
 import * as switchBookButton from "../buttons/switchBookButton";
+import * as updatePageButton from "../buttons/updatePageButton";
 import {
   executePause,
   executeResume,
@@ -18,6 +19,7 @@ import * as scheduleModal from "../modals/scheduleModal";
 import * as startModal from "../modals/startModal";
 import * as joinModal from "../modals/joinModal";
 import * as switchBookModal from "../modals/switchBookModal";
+import * as updatePageModal from "../modals/updatePageModal";
 
 // Explizite Zuordnung statt automatischem Datei-Scan: Buttons/Modals haben
 // nicht immer eine 1:1-Beziehung Datei <-> customId (z.B. teilen sich Pause/
@@ -29,6 +31,7 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.PANEL_LEADERBOARD]: leaderboardButton.execute,
   [CustomId.SPRINT_JOIN]: joinButton.execute,
   [CustomId.PARTICIPANT_SWITCH_BOOK]: switchBookButton.execute,
+  [CustomId.PARTICIPANT_UPDATE_PAGE]: updatePageButton.execute,
   [CustomId.PARTICIPANT_PAUSE]: executePause,
   [CustomId.PARTICIPANT_RESUME]: executeResume,
   [CustomId.PARTICIPANT_LEAVE]: executeLeave,
@@ -39,6 +42,7 @@ const modalHandlers: Record<string, (interaction: ModalSubmitInteraction) => Pro
   modal_start: startModal.execute,
   [CustomId.MODAL_JOIN]: joinModal.execute,
   [CustomId.MODAL_SWITCH_BOOK]: switchBookModal.execute,
+  [CustomId.MODAL_UPDATE_PAGE]: updatePageModal.execute,
 };
 
 export async function routeButton(interaction: ButtonInteraction): Promise<void> {

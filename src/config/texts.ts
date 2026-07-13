@@ -50,6 +50,10 @@ export const Texts = {
     resumed: "▶️ Weiter geht's!",
     left: "🚪 Du hast den Sprint verlassen.",
     switchBookSuccess: (title: string) => `📖 Neues Buch gestartet: **${title}**.`,
+    updatePageModalTitle: "Fortschritt aktualisieren",
+    updatePageLabel: "Aktuelle Seite",
+    updatePageSuccess: "✅ Fortschritt aktualisiert.",
+    updatePageInvalid: "❌ Ungültige Seitenzahl. Sie muss zwischen Startseite und Gesamtseitenzahl liegen.",
   },
 
   sprintEnd: {

@@ -10,14 +10,14 @@
     "deploy-commands": "ts-node src/deploy-commands.ts"
   },
   "dependencies": {
-    "discord.js": "^13.17.1",
-    "dotenv": "^16.4.5",
-    "mongoose": "^8.8.0"
+    "discord.js": "^14.16.3",
+    "mongoose": "^8.8.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
-    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.3"
+    "@types/node": "^22.9.0"
   }
 }

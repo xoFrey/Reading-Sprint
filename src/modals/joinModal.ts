@@ -20,15 +20,26 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
-  const participant = await joinSprint(
-    sprintId,
-    interaction.user.id,
-    interaction.guildId!,
-    title,
-    currentPage,
-    totalPages,
-    goalPage
-  );
+  let participant;
+  try {
+    participant = await joinSprint(
+      sprintId,
+      interaction.user.id,
+      interaction.guildId!,
+      title,
+      currentPage,
+      totalPages,
+      goalPage
+    );
+  } catch (error: any) {
+    // Doppelter Beitritt (z.B. durch Doppelklick oder abgelaufenes vorheriges
+    // Interaction-Token) -> freundliche Meldung statt hartem Crash.
+    if (error?.code === 11000) {
+      await interaction.reply({ content: Texts.join.alreadyJoined, ephemeral: true });
+      return;
+    }
+    throw error;
+  }
 
   const { embed, components } = buildParticipantPanel(participant);
 

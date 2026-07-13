@@ -23,7 +23,7 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
 
   await ScheduledSprint.create({
     guildId: interaction.guildId,
-    channelId: interaction.channelId,
+    channelId: interaction.channelId!,
     scheduledStart,
     duration,
     createdBy: interaction.user.id,
