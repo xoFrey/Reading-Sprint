@@ -2,6 +2,9 @@ import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, Acti
 import { CustomId, buildCustomId, parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 
+// Ein einziges Modal mit 5 Feldern (Discord-Maximum) statt zwei nacheinander:
+// Modal-Chaining nach einer Modal-Submission unterstützt Discord nicht,
+// daher wird die "alte Seite" direkt mit ins Buchwechsel-Modal aufgenommen.
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
   const [participantId] = args;
@@ -9,6 +12,12 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   const modal = new ModalBuilder()
     .setCustomId(buildCustomId(CustomId.MODAL_SWITCH_BOOK, participantId))
     .setTitle(Texts.join.modalTitle);
+
+  const oldPageInput = new TextInputBuilder()
+    .setCustomId("oldCurrentPage")
+    .setLabel(Texts.participant.oldBookPageLabel)
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true);
 
   const titleInput = new TextInputBuilder()
     .setCustomId("title")
@@ -35,6 +44,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     .setRequired(false);
 
   modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(oldPageInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(currentPageInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(totalPagesInput),

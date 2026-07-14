@@ -16,14 +16,14 @@ export function buildLeaderboardEmbed(users: IUser[]): EmbedBuilder {
   users.forEach((user, index) => {
     const progress = calculateLevelProgress(user.xp);
     embed.addFields({
-      name: `#${index + 1} — <@${user.discordId}>`,
-      value: Texts.leaderboard.entry(
+      name: `Platz #${index + 1}`,
+      value: `<@${user.discordId}>\n${Texts.leaderboard.entry(
         index + 1,
         progress.level,
         progress.currentLevelXP,
         progress.xpForNextLevel,
         user.xp
-      ),
+      )}`,
     });
   });
 

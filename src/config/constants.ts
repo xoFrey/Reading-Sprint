@@ -8,6 +8,7 @@ export const CustomId = {
   PANEL_LEADERBOARD: "panel_leaderboard",
 
   SPRINT_JOIN: "sprint_join",
+  SCHEDULE_REGISTER: "schedule_register",
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
   PARTICIPANT_UPDATE_PAGE: "participant_update_page",
@@ -31,6 +32,11 @@ export function parseCustomId(customId: string): { prefix: string; args: string[
   const [prefix, ...args] = customId.split(":");
   return { prefix, args };
 }
+
+// Farbpalette und Kulanzzeit-Konfiguration in einem File, da beide "feste,
+// serverweit gültige Werte" sind, die nicht ins XP-System gehören.
+export const GRACE_PERIOD_MINUTES = 10;
+export const MAX_UPCOMING_SPRINTS_SHOWN = 5;
 
 // Zentrale Farbpalette für Embeds (moderne, ruhige Töne).
 export const Colors = {

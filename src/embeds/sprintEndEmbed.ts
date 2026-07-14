@@ -23,8 +23,8 @@ export function buildSprintEndEmbed(results: ParticipantResult[]): EmbedBuilder 
     const levelUpLine = result.leveledUp ? `\n${Texts.sprintEnd.levelUp(result.newLevel)}` : "";
 
     embed.addFields({
-      name: `${medal} <@${result.userId}> — ${result.totalPagesRead} Seiten gesamt`,
-      value: `${bookLines}\n${goalStatus} · +${result.xpEarned} XP${levelUpLine}`,
+      name: `${medal} Platz ${result.placement} — ${result.totalPagesRead} Seiten gesamt`,
+      value: `<@${result.userId}>\n${bookLines}\n${goalStatus} · +${result.xpEarned} XP${levelUpLine}`,
     });
   }
 

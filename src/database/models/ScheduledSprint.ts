@@ -19,6 +19,11 @@ export interface IScheduledSprint extends Document {
   status: ScheduledSprintStatus;
   createdBy: string; // discordId
 
+  // Nutzer, die sich für diesen geplanten Sprint vorab angemeldet haben
+  // (siehe buttons/scheduleRegisterButton.ts). Rein informativ/als Erinnerung -
+  // tritt dem Sprint NICHT automatisch bei, sondern wird beim Start gepingt.
+  registeredUsers: string[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +48,7 @@ const ScheduledSprintSchema = new Schema<IScheduledSprint>(
     },
 
     createdBy: { type: String, required: true },
+    registeredUsers: { type: [String], default: [] },
   },
   { timestamps: true }
 );

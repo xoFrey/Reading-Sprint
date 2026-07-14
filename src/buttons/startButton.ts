@@ -1,17 +1,10 @@
 import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
 import { Texts } from "../config/texts";
-import { Sprint } from "../database/models/Sprint";
 
-// customId für das Start-Modal wird hier lokal genutzt (kein eigener Sprint,
-// da noch keiner existiert) und im interactionCreate-Event separat behandelt,
-// analog zum Schedule-Modal.
+// Kein DB-Aufruf vor showModal (siehe joinButton.ts für die Begründung).
+// Die Prüfung auf einen bereits aktiven Sprint passiert stattdessen in
+// modals/startModal.ts, direkt nach dem sofortigen deferReply().
 export async function execute(interaction: ButtonInteraction): Promise<void> {
-  const existingActive = await Sprint.findOne({ guildId: interaction.guildId, status: "active" });
-  if (existingActive) {
-    await interaction.reply({ content: Texts.start.alreadyActive, ephemeral: true });
-    return;
-  }
-
   const modal = new ModalBuilder()
     .setCustomId("modal_start") // eigenes, einfaches Modal - nur ein Feld
     .setTitle(Texts.start.modalTitle);

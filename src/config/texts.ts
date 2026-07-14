@@ -34,6 +34,17 @@ export const Texts = {
     ended: "⏹️ Der Sprint wurde manuell beendet.",
   },
 
+  grace: {
+    started: (minutes: number, endTimestamp: string) =>
+      `⏳ Der Sprint ist vorbei! Ihr habt noch **${minutes} Minuten** Zeit, ` +
+      `eure letzte Seite einzutragen (bis <t:${endTimestamp}:t>). Danach wird final ausgewertet.`,
+  },
+
+  scheduleRegister: {
+    registered: "🔔 Du wirst benachrichtigt, sobald dieser Sprint startet.",
+    unregistered: "🔕 Anmeldung entfernt.",
+  },
+
   join: {
     modalTitle: "Sprint beitreten",
     bookTitleLabel: "Buchtitel",
@@ -50,6 +61,7 @@ export const Texts = {
     resumed: "▶️ Weiter geht's!",
     left: "🚪 Du hast den Sprint verlassen.",
     switchBookSuccess: (title: string) => `📖 Neues Buch gestartet: **${title}**.`,
+    oldBookPageLabel: "Aktuelle Seite (bisheriges Buch)",
     updatePageModalTitle: "Fortschritt aktualisieren",
     updatePageLabel: "Aktuelle Seite",
     updatePageSuccess: "✅ Fortschritt aktualisiert.",

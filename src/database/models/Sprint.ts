@@ -14,6 +14,7 @@ export interface ISprint extends Document {
   startTime: Date;
   duration: number; // in Minuten
   endTime?: Date;
+  graceEndTime?: Date; // Ende der Kulanzzeit nach Sprintende, in der noch aktualisiert werden darf
 
   createdBy: string; // discordId
 
@@ -29,13 +30,14 @@ const SprintSchema = new Schema<ISprint>(
 
     status: {
       type: String,
-      enum: ["pending", "active", "ended"],
+      enum: ["pending", "active", "grace", "ended"],
       default: "pending",
     },
 
     startTime: { type: Date, required: true },
     duration: { type: Number, required: true },
     endTime: { type: Date },
+    graceEndTime: { type: Date },
 
     createdBy: { type: String, required: true },
   },

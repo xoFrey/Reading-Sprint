@@ -1,20 +1,13 @@
 import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
 import { CustomId, buildCustomId, parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { SprintParticipant } from "../database/models/SprintParticipant";
 
+// Wichtig: Kein DB-Aufruf vor showModal! Discord erwartet die erste Antwort
+// (hier: das Modal) innerhalb von 3 Sekunden. Ein doppelter Beitritt wird
+// stattdessen beim Absenden des Modals abgefangen (siehe modals/joinModal.ts).
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
   const [sprintId] = args;
-
-  const alreadyJoined = await SprintParticipant.findOne({
-    sprintId,
-    userId: interaction.user.id,
-  });
-  if (alreadyJoined) {
-    await interaction.reply({ content: Texts.join.alreadyJoined, ephemeral: true });
-    return;
-  }
 
   const modal = new ModalBuilder()
     .setCustomId(buildCustomId(CustomId.MODAL_JOIN, sprintId))

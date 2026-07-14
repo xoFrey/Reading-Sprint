@@ -1,7 +1,7 @@
 // Zentrale Typdefinitionen, die von mehreren Modulen genutzt werden.
 // Vermeidet zirkuläre Imports zwischen den Mongoose-Modellen.
 
-export type SprintStatus = "pending" | "active" | "ended";
+export type SprintStatus = "pending" | "active" | "grace" | "ended";
 export type ParticipantStatus = "active" | "paused" | "left";
 export type ScheduledSprintStatus = "scheduled" | "triggered" | "cancelled";
 

@@ -4,6 +4,7 @@ import { User, IUser } from "../database/models/User";
 import { Guild } from "../database/models/Guild";
 import { ParticipantBook } from "../types";
 import { resolveXPConfig } from "../config/xpConfig";
+import { GRACE_PERIOD_MINUTES } from "../config/constants";
 import { calculateSprintXP, applyXPGain } from "../xp/xpService";
 import { updateStreak } from "./streakService";
 import { findOrCreateBook, markBookFinished } from "./bookService";
@@ -150,14 +151,35 @@ export async function setParticipantStatus(
 }
 
 /**
- * Beendet einen Sprint: berechnet für jeden Teilnehmer die gelesenen Seiten,
- * vergibt XP, aktualisiert Streak & Nutzerstatistiken und liefert eine
+ * Beendet die aktive Lesephase eines Sprints, wertet aber noch NICHT aus.
+ * Stattdessen startet eine Kulanzzeit (Standard: 10 Minuten), in der
+ * Teilnehmer ihre letzte Seite noch nachtragen können - typisch, wenn man
+ * genau am Sprintende noch mittendrin liest. finalizeSprint() übernimmt
+ * danach die eigentliche Auswertung (siehe Scheduler-Job).
+ */
+export async function startGracePeriod(sprintId: string): Promise<ISprint> {
+  const sprint = await Sprint.findById(sprintId);
+  if (!sprint) throw new Error("Sprint nicht gefunden.");
+
+  sprint.status = "grace";
+  sprint.graceEndTime = new Date(Date.now() + GRACE_PERIOD_MINUTES * 60_000);
+  await sprint.save();
+
+  return sprint;
+}
+
+/**
+ * Wertet einen Sprint final aus: berechnet für jeden Teilnehmer die gelesenen
+ * Seiten, vergibt XP, aktualisiert Streak & Nutzerstatistiken und liefert eine
  * sortierte Ergebnisliste fürs öffentliche Abschluss-Leaderboard zurück.
+ *
+ * Wird sowohl nach Ablauf der Kulanzzeit (normaler Ablauf) als auch beim
+ * manuellen Admin-Abbruch (End-Button, überspringt die Kulanzzeit) aufgerufen.
  *
  * Alle DB-Schreibvorgänge pro Teilnehmer sind bewusst sequenziell (nicht Promise.all),
  * um die Datenbank bei sehr großen Sprints nicht mit parallelen Writes zu überlasten.
  */
-export async function endSprint(sprintId: string): Promise<ParticipantResult[]> {
+export async function finalizeSprint(sprintId: string): Promise<ParticipantResult[]> {
   const sprint = await Sprint.findById(sprintId);
   if (!sprint) throw new Error("Sprint nicht gefunden.");
 

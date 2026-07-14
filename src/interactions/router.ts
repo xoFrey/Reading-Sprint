@@ -7,6 +7,7 @@ import * as startButton from "../buttons/startButton";
 import * as endButton from "../buttons/endButton";
 import * as leaderboardButton from "../buttons/leaderboardButton";
 import * as joinButton from "../buttons/joinButton";
+import * as scheduleRegisterButton from "../buttons/scheduleRegisterButton";
 import * as switchBookButton from "../buttons/switchBookButton";
 import * as updatePageButton from "../buttons/updatePageButton";
 import {
@@ -30,6 +31,7 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.PANEL_END]: endButton.execute,
   [CustomId.PANEL_LEADERBOARD]: leaderboardButton.execute,
   [CustomId.SPRINT_JOIN]: joinButton.execute,
+  [CustomId.SCHEDULE_REGISTER]: scheduleRegisterButton.execute,
   [CustomId.PARTICIPANT_SWITCH_BOOK]: switchBookButton.execute,
   [CustomId.PARTICIPANT_UPDATE_PAGE]: updatePageButton.execute,
   [CustomId.PARTICIPANT_PAUSE]: executePause,
