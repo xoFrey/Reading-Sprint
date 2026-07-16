@@ -1,8 +1,8 @@
-import { Client, TextChannel, AttachmentBuilder } from "discord.js";
+import { Client, TextChannel, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { ScheduledSprint } from "../database/models/ScheduledSprint";
 import { Sprint } from "../database/models/Sprint";
 import { Texts } from "../config/texts";
-import { GRACE_PERIOD_MINUTES } from "../config/constants";
+import { GRACE_PERIOD_MINUTES, MESSAGE_CLEANUP_DELAY_MINUTES, CustomId, buildCustomId } from "../config/constants";
 import { startSprint, startGracePeriod, finalizeSprint } from "../services/sprintService";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
 import { buildSprintEndImage } from "../services/sprintEndImageService";
@@ -12,12 +12,13 @@ const CHECK_INTERVAL_MS = 60_000; // jede Minute prüfen reicht für Erinnerunge
 
 /**
  * Startet den periodischen Scheduler. Läuft für die gesamte Lebenszeit des
- * Prozesses und übernimmt vier Aufgaben, die zeitbasiert und nicht durch
+ * Prozesses und übernimmt fünf Aufgaben, die zeitbasiert und nicht durch
  * Nutzer-Interaktionen ausgelöst werden:
  *   1. 30-/5-Minuten-Erinnerungen vor geplanten Sprints senden
  *   2. geplante Sprints zur Startzeit automatisch starten
  *   3. aktive Sprints nach Ablauf ihrer Dauer in die Kulanzzeit versetzen
  *   4. Sprints nach Ablauf der Kulanzzeit final auswerten
+ *   5. Nachrichten beendeter Sprints nach einer Wartezeit aufräumen
  */
 export function startScheduler(client: Client): void {
   setInterval(() => {
@@ -25,6 +26,7 @@ export function startScheduler(client: Client): void {
     checkScheduledStarts(client).catch((error) => console.error("[Scheduler] Start-Fehler:", error));
     checkActiveSprintEnds(client).catch((error) => console.error("[Scheduler] End-Fehler:", error));
     checkGracePeriodEnds(client).catch((error) => console.error("[Scheduler] Kulanzzeit-Fehler:", error));
+    checkMessageCleanup(client).catch((error) => console.error("[Scheduler] Cleanup-Fehler:", error));
   }, CHECK_INTERVAL_MS);
 
   console.log("[Scheduler] Gestartet (Intervall: 60s).");
@@ -82,7 +84,10 @@ async function checkScheduledStarts(client: Client): Promise<void> {
     // Anmeldung tatsächlich als Erinnerung dient.
     const mentions = scheduled.registeredUsers.map((userId) => `<@${userId}>`).join(" ");
 
-    await channel.send({ content: mentions || undefined, embeds: [embed], components });
+    const sentMessage = await channel.send({ content: mentions || undefined, embeds: [embed], components });
+
+    sprint.messageId = sentMessage.id;
+    await sprint.save();
 
     scheduled.status = "triggered";
     await scheduled.save();
@@ -103,7 +108,22 @@ async function checkActiveSprintEnds(client: Client): Promise<void> {
 
     if (channel && updatedSprint.graceEndTime) {
       const graceEndUnix = Math.floor(updatedSprint.graceEndTime.getTime() / 1000).toString();
-      await channel.send(Texts.grace.started(GRACE_PERIOD_MINUTES, graceEndUnix));
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(buildCustomId(CustomId.SPRINT_GRACE_UPDATE_PAGE, sprint.id))
+          .setLabel(Texts.grace.updateButtonLabel)
+          .setEmoji("✏️")
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      const sentMessage = await channel.send({
+        content: Texts.grace.started(GRACE_PERIOD_MINUTES, graceEndUnix),
+        components: [row],
+      });
+
+      updatedSprint.graceMessageId = sentMessage.id;
+      await updatedSprint.save();
     }
   }
 }
@@ -127,6 +147,45 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
 
     const imageBuffer = await buildSprintEndImage(client, sprint.guildId, results);
     const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
-    await channel.send({ files: [attachment] });
+    const sentMessage = await channel.send({ files: [attachment] });
+
+    // sprint wurde in finalizeSprint() bereits gespeichert (status: "ended");
+    // hier nur die zusätzliche ID nachtragen, kein erneutes vollständiges Save nötig.
+    sprint.endMessageId = sentMessage.id;
+    await sprint.save();
+  }
+}
+
+/**
+ * Löscht ALLE Kanal-Nachrichten eines Sprints (Beitreten-Embed,
+ * Kulanzzeit-Ankündigung, Abschluss-Bild), sobald er seit mindestens
+ * MESSAGE_CLEANUP_DELAY_MINUTES beendet ist. So bleibt der Kanal übersichtlich
+ * und zeigt nur noch aktive/geplante Sprints.
+ */
+async function checkMessageCleanup(client: Client): Promise<void> {
+  const cutoff = new Date(Date.now() - MESSAGE_CLEANUP_DELAY_MINUTES * 60_000);
+
+  const sprintsToClean = await Sprint.find({
+    status: "ended",
+    endTime: { $lte: cutoff },
+    messagesCleanedUp: false,
+  });
+
+  for (const sprint of sprintsToClean) {
+    const channel = await fetchTextChannel(client, sprint.channelId);
+
+    if (channel) {
+      // Jeder Löschversuch unabhängig von den anderen - falls eine Nachricht
+      // bereits manuell gelöscht wurde, soll das die übrigen nicht verhindern.
+      const messageIds = [sprint.messageId, sprint.graceMessageId, sprint.endMessageId];
+
+      for (const messageId of messageIds) {
+        if (!messageId) continue;
+        await channel.messages.delete(messageId).catch(() => undefined);
+      }
+    }
+
+    sprint.messagesCleanedUp = true;
+    await sprint.save();
   }
 }

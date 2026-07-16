@@ -26,7 +26,12 @@ export function buildJoinEmbed(
       .setCustomId(buildCustomId(CustomId.SPRINT_JOIN, sprintId))
       .setLabel("Beitreten")
       .setEmoji("🙋")
-      .setStyle(ButtonStyle.Primary)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.SPRINT_MY_PANEL, sprintId))
+      .setLabel(Texts.join.myPanelButtonLabel)
+      .setEmoji("📋")
+      .setStyle(ButtonStyle.Secondary)
   );
 
   return { embed, components: [row] };

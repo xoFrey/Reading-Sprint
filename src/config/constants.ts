@@ -8,6 +8,7 @@ export const CustomId = {
   PANEL_LEADERBOARD: "panel_leaderboard",
 
   SPRINT_JOIN: "sprint_join",
+  SPRINT_MY_PANEL: "sprint_my_panel",
   SCHEDULE_REGISTER: "schedule_register",
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
@@ -15,6 +16,8 @@ export const CustomId = {
   PARTICIPANT_PAUSE: "participant_pause",
   PARTICIPANT_RESUME: "participant_resume",
   PARTICIPANT_LEAVE: "participant_leave",
+
+  SPRINT_GRACE_UPDATE_PAGE: "sprint_grace_update_page",
 
   SELECT_JOIN_BOOK: "select_join_book",
   SELECT_SWITCH_BOOK: "select_switch_book",
@@ -46,6 +49,7 @@ export function parseCustomId(customId: string): { prefix: string; args: string[
 // serverweit gültige Werte" sind, die nicht ins XP-System gehören.
 export const GRACE_PERIOD_MINUTES = 10;
 export const MAX_UPCOMING_SPRINTS_SHOWN = 5;
+export const MESSAGE_CLEANUP_DELAY_MINUTES = 20;
 
 // Zentrale Farbpalette für Embeds (moderne, ruhige Töne).
 export const Colors = {

@@ -34,5 +34,9 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   const imageBuffer = await buildSprintEndImage(interaction.client, interaction.guildId!, results);
   const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
 
-  await interaction.editReply({ content: Texts.end.ended, files: [attachment] });
+  const message = await interaction.editReply({ content: Texts.end.ended, files: [attachment] });
+
+  // Speichern, damit der Cleanup-Job (jobs/scheduler.ts) diese Nachricht
+  // später löschen kann, sobald der Sprint länger vorbei ist.
+  await Sprint.findByIdAndUpdate(activeSprint.id, { endMessageId: message.id });
 }

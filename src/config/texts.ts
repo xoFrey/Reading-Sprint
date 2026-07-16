@@ -38,6 +38,7 @@ export const Texts = {
     started: (minutes: number, endTimestamp: string) =>
       `⏳ Der Sprint ist vorbei! Ihr habt noch **${minutes} Minuten** Zeit, ` +
       `eure letzte Seite einzutragen (bis <t:${endTimestamp}:t>). Danach wird final ausgewertet.`,
+    updateButtonLabel: "Seite aktualisieren",
   },
 
   scheduleRegister: {
@@ -52,6 +53,8 @@ export const Texts = {
     totalPagesLabel: "Gesamtseitenzahl",
     goalPageLabel: "Seitenziel (optional)",
     alreadyJoined: "❌ Du nimmst bereits an diesem Sprint teil.",
+    myPanelButtonLabel: "Mein Panel",
+    notYetJoined: "❌ Du nimmst noch nicht an diesem Sprint teil. Klicke zuerst auf \"Beitreten\".",
     welcome: (bookTitle: string) =>
       `📖 Du liest gerade **${bookTitle}**. Nutze die Buttons, um deinen Fortschritt zu verwalten.`,
   },

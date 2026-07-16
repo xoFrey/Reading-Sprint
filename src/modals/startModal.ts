@@ -37,7 +37,12 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const endTime = new Date(sprint.startTime.getTime() + duration * 60_000);
   const { embed, components } = buildJoinEmbed(sprint.id, duration, endTime);
 
-  await interaction.editReply({ embeds: [embed], components });
+  const message = await interaction.editReply({ embeds: [embed], components });
+
+  // Speichern, damit der Cleanup-Job (jobs/scheduler.ts) diese Nachricht
+  // später löschen kann, sobald der Sprint länger vorbei ist.
+  sprint.messageId = message.id;
+  await sprint.save();
 
   // Automatisches Sprintende wird vom Scheduler-Job (jobs/scheduler.ts) übernommen,
   // der regelmäßig prüft, ob active Sprints ihre Endzeit erreicht haben.

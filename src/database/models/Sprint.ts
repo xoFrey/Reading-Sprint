@@ -8,6 +8,8 @@ export interface ISprint extends Document {
   guildId: string;
   channelId: string;
   messageId?: string; // ID des öffentlichen "Beitreten"-Embeds
+  graceMessageId?: string; // ID der Kulanzzeit-Ankündigung
+  endMessageId?: string; // ID der Sprint-Abschluss-Bild-Nachricht
 
   status: SprintStatus;
 
@@ -15,6 +17,7 @@ export interface ISprint extends Document {
   duration: number; // in Minuten
   endTime?: Date;
   graceEndTime?: Date; // Ende der Kulanzzeit nach Sprintende, in der noch aktualisiert werden darf
+  messagesCleanedUp: boolean; // true, sobald die Kanal-Nachrichten aufgeräumt wurden
 
   createdBy: string; // discordId
 
@@ -27,6 +30,8 @@ const SprintSchema = new Schema<ISprint>(
     guildId: { type: String, required: true },
     channelId: { type: String, required: true },
     messageId: { type: String },
+    graceMessageId: { type: String },
+    endMessageId: { type: String },
 
     status: {
       type: String,
@@ -38,11 +43,15 @@ const SprintSchema = new Schema<ISprint>(
     duration: { type: Number, required: true },
     endTime: { type: Date },
     graceEndTime: { type: Date },
+    messagesCleanedUp: { type: Boolean, default: false },
 
     createdBy: { type: String, required: true },
   },
   { timestamps: true }
 );
+
+// Wird vom Cleanup-Job genutzt, um beendete, noch nicht aufgeräumte Sprints zu finden.
+SprintSchema.index({ status: 1, endTime: 1, messagesCleanedUp: 1 });
 
 SprintSchema.index({ guildId: 1, status: 1 });
 
