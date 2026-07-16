@@ -1,7 +1,7 @@
-import { ButtonInteraction, PermissionFlagsBits } from "discord.js";
+import { ButtonInteraction, PermissionFlagsBits, AttachmentBuilder } from "discord.js";
 import { Sprint } from "../database/models/Sprint";
 import { finalizeSprint } from "../services/sprintService";
-import { buildSprintEndEmbed } from "../embeds/sprintEndEmbed";
+import { buildSprintEndImage } from "../services/sprintEndImageService";
 import { Texts } from "../config/texts";
 
 export async function execute(interaction: ButtonInteraction): Promise<void> {
@@ -25,7 +25,14 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   }
 
   const results = await finalizeSprint(activeSprint.id);
-  const embed = buildSprintEndEmbed(results);
 
-  await interaction.editReply({ content: Texts.end.ended, embeds: [embed] });
+  if (results.length === 0) {
+    await interaction.editReply({ content: `${Texts.end.ended}\n${Texts.sprintEnd.noParticipants}` });
+    return;
+  }
+
+  const imageBuffer = await buildSprintEndImage(interaction.client, interaction.guildId!, results);
+  const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
+
+  await interaction.editReply({ content: Texts.end.ended, files: [attachment] });
 }

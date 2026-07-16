@@ -6,6 +6,7 @@ import { ParticipantBook } from "../types";
 import { resolveXPConfig } from "../config/xpConfig";
 import { GRACE_PERIOD_MINUTES } from "../config/constants";
 import { calculateSprintXP, applyXPGain } from "../xp/xpService";
+import { calculateLevelProgress } from "../xp/levelCurve";
 import { updateStreak } from "./streakService";
 import { findOrCreateBook, markBookFinished } from "./bookService";
 
@@ -20,6 +21,9 @@ export interface ParticipantResult {
   leveledUp: boolean;
   newLevel: number;
   leftEarly: boolean; // true, wenn der Teilnehmer den Sprint vorzeitig verlassen hat
+  minutesInSprint: number; // Dauer der tatsächlichen Teilnahme
+  currentLevelXP: number; // XP-Fortschritt im NEUEN Level (nach der Vergabe)
+  xpForNextLevel: number; // benötigte XP fürs nächste Level (nach der Vergabe)
 }
 
 /**
@@ -240,6 +244,10 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
 
     const { leveledUp, newLevel } = applyXPGain(user, xpEarned);
 
+    // Fortschritt im NEUEN Level (nach der XP-Vergabe) für die Anzeige im
+    // Abschluss-Embed ("noch X XP bis zum nächsten Level").
+    const levelProgressAfterGain = calculateLevelProgress(user.xp);
+
     user.totalPagesRead += totalPagesRead;
     user.totalMinutesRead += minutesRead;
     user.totalBooksFinished += finishedBooksCount;
@@ -260,6 +268,9 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
       leveledUp,
       newLevel,
       leftEarly: participant.status === "left",
+      minutesInSprint: minutesRead,
+      currentLevelXP: levelProgressAfterGain.currentLevelXP,
+      xpForNextLevel: levelProgressAfterGain.xpForNextLevel,
     });
   }
 

@@ -1,11 +1,11 @@
-import { Client, TextChannel } from "discord.js";
+import { Client, TextChannel, AttachmentBuilder } from "discord.js";
 import { ScheduledSprint } from "../database/models/ScheduledSprint";
 import { Sprint } from "../database/models/Sprint";
 import { Texts } from "../config/texts";
 import { GRACE_PERIOD_MINUTES } from "../config/constants";
 import { startSprint, startGracePeriod, finalizeSprint } from "../services/sprintService";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
-import { buildSprintEndEmbed } from "../embeds/sprintEndEmbed";
+import { buildSprintEndImage } from "../services/sprintEndImageService";
 import { refreshPanel } from "../services/panelService";
 
 const CHECK_INTERVAL_MS = 60_000; // jede Minute prüfen reicht für Erinnerungen auf Minutenbasis
@@ -118,9 +118,15 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
     const channel = await fetchTextChannel(client, sprint.channelId);
     const results = await finalizeSprint(sprint.id);
 
-    if (channel) {
-      const embed = buildSprintEndEmbed(results);
-      await channel.send({ embeds: [embed] });
+    if (!channel) continue;
+
+    if (results.length === 0) {
+      await channel.send(Texts.sprintEnd.noParticipants);
+      continue;
     }
+
+    const imageBuffer = await buildSprintEndImage(client, sprint.guildId, results);
+    const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
+    await channel.send({ files: [attachment] });
   }
 }
