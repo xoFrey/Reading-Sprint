@@ -11,6 +11,7 @@ export interface IUser extends Document {
   level: number;
 
   totalPagesRead: number;
+  totalMinutesRead: number;
   totalBooksFinished: number;
   totalSprintsCompleted: number;
 
@@ -33,6 +34,7 @@ const UserSchema = new Schema<IUser>(
     level: { type: Number, default: 1 },
 
     totalPagesRead: { type: Number, default: 0 },
+    totalMinutesRead: { type: Number, default: 0 },
     totalBooksFinished: { type: Number, default: 0 },
     totalSprintsCompleted: { type: Number, default: 0 },
 

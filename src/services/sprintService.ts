@@ -213,6 +213,15 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
     );
     const finishedBooksCount = participant.books.filter((book) => book.isFinished).length;
 
+    // Lesezeit = Zeit von Beitritt bis Sprintende bzw. bis zum vorzeitigen
+    // Verlassen (leftAt). So zählt bei einem frühen Ausstieg nur die
+    // tatsächlich verbrachte Zeit, nicht die volle Sprintdauer.
+    const participantEndTime = participant.leftAt ?? sprint.endTime ?? new Date();
+    const rawMinutesRead = Math.round(
+      (participantEndTime.getTime() - participant.joinedAt.getTime()) / 60_000
+    );
+    const minutesRead = Number.isFinite(rawMinutesRead) ? Math.max(0, rawMinutesRead) : 0;
+
     let user = await User.findOne({ discordId: participant.userId, guildId: participant.guildId });
     if (!user) {
       user = await User.create({ discordId: participant.userId, guildId: participant.guildId });
@@ -232,6 +241,7 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
     const { leveledUp, newLevel } = applyXPGain(user, xpEarned);
 
     user.totalPagesRead += totalPagesRead;
+    user.totalMinutesRead += minutesRead;
     user.totalBooksFinished += finishedBooksCount;
     user.totalSprintsCompleted += 1;
 
