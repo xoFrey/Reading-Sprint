@@ -11,6 +11,7 @@ export const CustomId = {
   SCHEDULE_REGISTER: "schedule_register",
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
+  PARTICIPANT_SWITCH_BOOK_STEP2: "participant_switch_book_step2",
   PARTICIPANT_UPDATE_PAGE: "participant_update_page",
   PARTICIPANT_PAUSE: "participant_pause",
   PARTICIPANT_RESUME: "participant_resume",

@@ -19,6 +19,7 @@ export interface ParticipantResult {
   xpEarned: number;
   leveledUp: boolean;
   newLevel: number;
+  leftEarly: boolean; // true, wenn der Teilnehmer den Sprint vorzeitig verlassen hat
 }
 
 /**
@@ -190,18 +191,23 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
   const guildConfig = await Guild.findOne({ guildId: sprint.guildId });
   const xpConfig = resolveXPConfig(guildConfig?.xpConfig);
 
-  const participants = await SprintParticipant.find({
-    sprintId,
-    status: { $ne: "left" },
-  });
+  // Auch Teilnehmer, die vorzeitig verlassen haben (status "left"), zählen
+  // im Leaderboard - mit dem Stand, den sie bis zu ihrem Ausstieg erreicht
+  // hatten (books.currentPage wurde beim Verlassen nicht mehr verändert).
+  const participants = await SprintParticipant.find({ sprintId });
 
   const results: ParticipantResult[] = [];
 
   for (const participant of participants) {
-    const totalPagesRead = participant.books.reduce(
+    const rawPagesRead = participant.books.reduce(
       (sum, book) => sum + Math.max(0, book.currentPage - book.startPage),
       0
     );
+    // Absicherung gegen fehlerhafte/alte Datensätze (z.B. currentPage nicht
+    // numerisch gespeichert) - ein einzelner kaputter Teilnehmer soll nicht
+    // die gesamte Auswertung crashen lassen, sondern einfach mit 0 gelten.
+    const totalPagesRead = Number.isFinite(rawPagesRead) ? rawPagesRead : 0;
+
     const goalReached = participant.books.some(
       (book) => book.goalPage !== undefined && book.currentPage >= book.goalPage
     );
@@ -243,6 +249,7 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
       xpEarned,
       leveledUp,
       newLevel,
+      leftEarly: participant.status === "left",
     });
   }
 

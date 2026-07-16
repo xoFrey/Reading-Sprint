@@ -73,6 +73,7 @@ export const Texts = {
     noParticipants: "Niemand hat an diesem Sprint teilgenommen.",
     goalReached: "🎯 Ziel erreicht",
     goalMissed: "Ziel nicht erreicht",
+    leftEarly: "🚪 Hat den Sprint vorzeitig verlassen",
     levelUp: (level: number) => `🎉 Level-Up! Jetzt Level **${level}**.`,
   },
 

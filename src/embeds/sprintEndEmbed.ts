@@ -21,10 +21,11 @@ export function buildSprintEndEmbed(results: ParticipantResult[]): EmbedBuilder 
 
     const goalStatus = result.goalReached ? Texts.sprintEnd.goalReached : Texts.sprintEnd.goalMissed;
     const levelUpLine = result.leveledUp ? `\n${Texts.sprintEnd.levelUp(result.newLevel)}` : "";
+    const leftEarlyLine = result.leftEarly ? `\n${Texts.sprintEnd.leftEarly}` : "";
 
     embed.addFields({
       name: `${medal} Platz ${result.placement} — ${result.totalPagesRead} Seiten gesamt`,
-      value: `<@${result.userId}>\n${bookLines}\n${goalStatus} · +${result.xpEarned} XP${levelUpLine}`,
+      value: `<@${result.userId}>\n${bookLines}\n${goalStatus} · +${result.xpEarned} XP${levelUpLine}${leftEarlyLine}`,
     });
   }
 

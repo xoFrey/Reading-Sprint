@@ -48,7 +48,10 @@ export function calculateSprintXP(config: XPConfig, input: SprintXPInput): numbe
     xp += input.currentStreak * config.streakBonus;
   }
 
-  return Math.round(xp);
+  // Letzte Absicherung: sollte trotz aller Prüfungen doch NaN entstehen
+  // (z.B. durch fehlerhafte Altdaten), lieber 0 XP vergeben als die
+  // Datenbank-Validierung crashen zu lassen.
+  return Number.isFinite(xp) ? Math.round(xp) : 0;
 }
 
 /**
@@ -60,6 +63,10 @@ export function calculateSprintXP(config: XPConfig, input: SprintXPInput): numbe
  * mehrere Änderungen in einem Aufruf gebündelt werden können.
  */
 export function applyXPGain(user: IUser, amount: number): LevelUpResult {
+  // Absicherung gegen bereits fehlerhaft gespeicherte Altdaten (z.B. xp: NaN
+  // durch einen früheren Bug) - sonst würde der Fehler sich für immer fortsetzen.
+  if (!Number.isFinite(user.xp)) user.xp = 0;
+
   const oldLevel = calculateLevelProgress(user.xp).level;
 
   user.xp += amount;
