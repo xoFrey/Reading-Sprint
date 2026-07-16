@@ -1,48 +1,47 @@
-import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
-import { CustomId, buildCustomId, parseCustomId } from "../config/constants";
+import {
+  ButtonInteraction,
+  StringSelectMenuBuilder,
+  ActionRowBuilder,
+} from "discord.js";
+import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from "../config/constants";
 import { Texts } from "../config/texts";
+import { getUnfinishedBooks } from "../services/bookService";
 
-// Wichtig: Kein DB-Aufruf vor showModal! Discord erwartet die erste Antwort
-// (hier: das Modal) innerhalb von 3 Sekunden. Ein doppelter Beitritt wird
-// stattdessen beim Absenden des Modals abgefangen (siehe modals/joinModal.ts).
+/**
+ * Zeigt zuerst eine Dropdown-Auswahl der unbeendeten Bücher aus der
+ * persönlichen Bibliothek (siehe bookService.getUnfinishedBooks), damit ein
+ * Buch aus einem vorherigen Sprint fortgesetzt werden kann, ohne Titel und
+ * Gesamtseitenzahl erneut einzutippen. "Neues Buch" ist immer als Option dabei.
+ *
+ * deferReply() zuerst (statt showModal direkt), da wir vor der ersten Antwort
+ * die Bibliothek abfragen müssen - ein Select-Menü kann (anders als ein Modal)
+ * per editReply() nach einem deferReply() nachgereicht werden.
+ */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+
   const { args } = parseCustomId(interaction.customId);
   const [sprintId] = args;
 
-  const modal = new ModalBuilder()
-    .setCustomId(buildCustomId(CustomId.MODAL_JOIN, sprintId))
-    .setTitle(Texts.join.modalTitle);
+  const unfinishedBooks = await getUnfinishedBooks(interaction.user.id, interaction.guildId!);
 
-  const titleInput = new TextInputBuilder()
-    .setCustomId("title")
-    .setLabel(Texts.join.bookTitleLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(buildCustomId(CustomId.SELECT_JOIN_BOOK, sprintId))
+    .setPlaceholder(Texts.bookSelect.placeholder)
+    .addOptions(
+      ...unfinishedBooks.map((book) => ({
+        label: book.title.slice(0, 100),
+        value: book.id,
+        description: Texts.bookSelect.bookOptionDescription(book.totalPages).slice(0, 100),
+      })),
+      {
+        label: Texts.bookSelect.newBookOptionLabel,
+        value: NEW_BOOK_SELECT_VALUE,
+        description: Texts.bookSelect.newBookOptionDescription,
+      }
+    );
 
-  const currentPageInput = new TextInputBuilder()
-    .setCustomId("currentPage")
-    .setLabel(Texts.join.currentPageLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
-  const totalPagesInput = new TextInputBuilder()
-    .setCustomId("totalPages")
-    .setLabel(Texts.join.totalPagesLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const goalPageInput = new TextInputBuilder()
-    .setCustomId("goalPage")
-    .setLabel(Texts.join.goalPageLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(false);
-
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(currentPageInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(totalPagesInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(goalPageInput)
-  );
-
-  await interaction.showModal(modal);
+  await interaction.editReply({ content: Texts.bookSelect.prompt, components: [row] });
 }

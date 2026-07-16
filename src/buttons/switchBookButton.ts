@@ -1,55 +1,50 @@
-import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
-import { CustomId, buildCustomId, parseCustomId } from "../config/constants";
+import {
+  ButtonInteraction,
+  StringSelectMenuBuilder,
+  ActionRowBuilder,
+} from "discord.js";
+import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from "../config/constants";
 import { Texts } from "../config/texts";
+import { getUnfinishedBooks } from "../services/bookService";
+import { SprintParticipant } from "../database/models/SprintParticipant";
+import { getCurrentBook } from "../services/sprintService";
 
-// Ein einziges Modal mit 5 Feldern (Discord-Maximum) statt zwei nacheinander:
-// Modal-Chaining nach einer Modal-Submission unterstützt Discord nicht,
-// daher wird die "alte Seite" direkt mit ins Buchwechsel-Modal aufgenommen.
+/**
+ * Gleicher Ansatz wie beim Sprint-Beitritt (siehe joinButton.ts): erst
+ * Bibliotheks-Auswahl zeigen, dann je nach Auswahl das passende Modal.
+ * Das aktuell gelesene Buch wird aus der Liste ausgeschlossen (Wechsel zum
+ * selben Buch ergibt keinen Sinn).
+ */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+
   const { args } = parseCustomId(interaction.customId);
   const [participantId] = args;
 
-  const modal = new ModalBuilder()
-    .setCustomId(buildCustomId(CustomId.MODAL_SWITCH_BOOK, participantId))
-    .setTitle(Texts.join.modalTitle);
+  const participant = await SprintParticipant.findById(participantId);
+  const currentBookTitle = participant ? getCurrentBook(participant)?.title.toLowerCase() : undefined;
 
-  const oldPageInput = new TextInputBuilder()
-    .setCustomId("oldCurrentPage")
-    .setLabel(Texts.participant.oldBookPageLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const titleInput = new TextInputBuilder()
-    .setCustomId("title")
-    .setLabel(Texts.join.bookTitleLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const currentPageInput = new TextInputBuilder()
-    .setCustomId("currentPage")
-    .setLabel(Texts.join.currentPageLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const totalPagesInput = new TextInputBuilder()
-    .setCustomId("totalPages")
-    .setLabel(Texts.join.totalPagesLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const goalPageInput = new TextInputBuilder()
-    .setCustomId("goalPage")
-    .setLabel(Texts.join.goalPageLabel)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(false);
-
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(oldPageInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(currentPageInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(totalPagesInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(goalPageInput)
+  const unfinishedBooks = (await getUnfinishedBooks(interaction.user.id, interaction.guildId!)).filter(
+    (book) => book.title.toLowerCase() !== currentBookTitle
   );
 
-  await interaction.showModal(modal);
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(buildCustomId(CustomId.SELECT_SWITCH_BOOK, participantId))
+    .setPlaceholder(Texts.bookSelect.placeholder)
+    .addOptions(
+      ...unfinishedBooks.map((book) => ({
+        label: book.title.slice(0, 100),
+        value: book.id,
+        description: Texts.bookSelect.bookOptionDescription(book.totalPages).slice(0, 100),
+      })),
+      {
+        label: Texts.bookSelect.newBookOptionLabel,
+        value: NEW_BOOK_SELECT_VALUE,
+        description: Texts.bookSelect.newBookOptionDescription,
+      }
+    );
+
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+
+  await interaction.editReply({ content: Texts.bookSelect.prompt, components: [row] });
 }

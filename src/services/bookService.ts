@@ -1,5 +1,21 @@
 import { Book, IBook } from "../database/models/Book";
 
+// Discord erlaubt max. 25 Optionen pro Select-Menü. Ein Platz bleibt für die
+// "Neues Buch"-Option reserviert (siehe buildBookSelectOptions).
+const MAX_BOOKS_IN_SELECT = 24;
+
+/**
+ * Lädt die unbeendeten Bücher eines Nutzers, neueste zuerst.
+ * Wird beim Beitritt/Buchwechsel genutzt, um eine Dropdown-Auswahl zu bauen,
+ * damit man ein bereits begonnenes Buch fortsetzen kann, ohne Titel/Seitenzahl
+ * erneut eintippen zu müssen.
+ */
+export async function getUnfinishedBooks(userId: string, guildId: string): Promise<IBook[]> {
+  return Book.find({ userId, guildId, isFinished: false })
+    .sort({ updatedAt: -1 })
+    .limit(MAX_BOOKS_IN_SELECT);
+}
+
 /**
  * Sucht ein vorhandenes, noch nicht beendetes Buch mit exakt diesem Titel
  * in der Bibliothek des Nutzers, oder legt ein neues an.

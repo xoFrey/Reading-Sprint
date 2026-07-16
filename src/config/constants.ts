@@ -11,17 +11,25 @@ export const CustomId = {
   SCHEDULE_REGISTER: "schedule_register",
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
-  PARTICIPANT_SWITCH_BOOK_STEP2: "participant_switch_book_step2",
   PARTICIPANT_UPDATE_PAGE: "participant_update_page",
   PARTICIPANT_PAUSE: "participant_pause",
   PARTICIPANT_RESUME: "participant_resume",
   PARTICIPANT_LEAVE: "participant_leave",
 
+  SELECT_JOIN_BOOK: "select_join_book",
+  SELECT_SWITCH_BOOK: "select_switch_book",
+
   MODAL_SCHEDULE: "modal_schedule",
   MODAL_JOIN: "modal_join",
+  MODAL_JOIN_EXISTING_BOOK: "modal_join_existing_book",
   MODAL_SWITCH_BOOK: "modal_switch_book",
+  MODAL_SWITCH_TO_EXISTING_BOOK: "modal_switch_to_existing_book",
   MODAL_UPDATE_PAGE: "modal_update_page",
 } as const;
+
+// Sonderwert für die "Neues Buch eintragen"-Option in den Select-Menüs
+// (siehe buttons/joinButton.ts und buttons/switchBookButton.ts).
+export const NEW_BOOK_SELECT_VALUE = "__new_book__";
 
 // Baut eine customId inkl. Zusatzdaten (z.B. Sprint- oder Participant-ID).
 export function buildCustomId(prefix: string, ...args: string[]): string {

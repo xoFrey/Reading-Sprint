@@ -1,5 +1,5 @@
 import { Client, Events, Interaction } from "discord.js";
-import { routeButton, routeModal } from "../interactions/router";
+import { routeButton, routeModal, routeSelect } from "../interactions/router";
 import { Texts } from "../config/texts";
 
 export const name = Events.InteractionCreate;
@@ -35,6 +35,11 @@ export async function execute(interaction: Interaction): Promise<void> {
 
   if (interaction.isModalSubmit()) {
     await routeModal(interaction);
+    return;
+  }
+
+  if (interaction.isStringSelectMenu()) {
+    await routeSelect(interaction);
     return;
   }
 }

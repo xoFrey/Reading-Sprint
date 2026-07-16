@@ -56,6 +56,15 @@ export const Texts = {
       `📖 Du liest gerade **${bookTitle}**. Nutze die Buttons, um deinen Fortschritt zu verwalten.`,
   },
 
+  bookSelect: {
+    prompt: "📚 Wähle ein Buch aus deiner Bibliothek oder trage ein neues ein:",
+    placeholder: "Buch auswählen...",
+    newBookOptionLabel: "📕 Neues Buch eintragen",
+    newBookOptionDescription: "Titel & Gesamtseitenzahl selbst eingeben",
+    bookOptionDescription: (totalPages: number) => `${totalPages} Seiten insgesamt`,
+    modalTitleExisting: "Weiterlesen",
+  },
+
   participant: {
     paused: "⏸️ Du hast pausiert. Klicke auf ▶️ Weiter, um fortzufahren.",
     resumed: "▶️ Weiter geht's!",
