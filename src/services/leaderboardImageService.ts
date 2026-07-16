@@ -17,7 +17,9 @@ export interface LeaderboardImageEntry {
  * Baut das Leaderboard-Bild über die gemeinsame Karten-Engine (siehe
  * cardImageService.ts) - dieselbe visuelle Sprache wie das Sprint-Abschluss-Bild.
  */
-export async function buildLeaderboardImage(entries: LeaderboardImageEntry[]): Promise<Buffer> {
+export async function buildLeaderboardImage(
+  entries: LeaderboardImageEntry[],
+): Promise<Buffer> {
   const cardEntries: CardEntry[] = entries.map((entry) => {
     const xpUntilNext = entry.xpForNextLevel - entry.currentLevelXP;
 
@@ -29,7 +31,8 @@ export async function buildLeaderboardImage(entries: LeaderboardImageEntry[]): P
         entry.bookTitle,
         `${entry.pagesRead} Seiten`,
         `Level ${entry.level} — ${entry.currentLevelXP}/${entry.xpForNextLevel} XP (${xpUntilNext} bis Level ${entry.level + 1})`,
-        `${entry.totalXP} XP insgesamt · 🔥 ${entry.currentStreak} Tage Streak`,
+        `${entry.totalXP} XP insgesamt`,
+        `Streak: ${entry.currentStreak} Tage`,
       ],
     };
   });
