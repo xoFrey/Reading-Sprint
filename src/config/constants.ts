@@ -6,11 +6,12 @@ export const CustomId = {
   PANEL_START: "panel_start",
   PANEL_END: "panel_end",
   PANEL_LEADERBOARD: "panel_leaderboard",
+  PANEL_MY_BOOKS: "panel_my_books",
+  PANEL_CANCEL_SCHEDULE: "panel_cancel_schedule",
 
   SPRINT_JOIN: "sprint_join",
   SPRINT_MY_PANEL: "sprint_my_panel",
   SCHEDULE_REGISTER: "schedule_register",
-  SCHEDULE_CANCEL: "schedule_cancel",
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
   PARTICIPANT_UPDATE_PAGE: "participant_update_page",
@@ -20,8 +21,13 @@ export const CustomId = {
 
   SPRINT_GRACE_UPDATE_PAGE: "sprint_grace_update_page",
 
+  BOOK_EDIT: "book_edit",
+  BOOK_DELETE: "book_delete",
+
   SELECT_JOIN_BOOK: "select_join_book",
   SELECT_SWITCH_BOOK: "select_switch_book",
+  SELECT_MANAGE_BOOK: "select_manage_book",
+  SELECT_CANCEL_SCHEDULE: "select_cancel_schedule",
 
   MODAL_SCHEDULE: "modal_schedule",
   MODAL_JOIN: "modal_join",
@@ -29,6 +35,7 @@ export const CustomId = {
   MODAL_SWITCH_BOOK: "modal_switch_book",
   MODAL_SWITCH_TO_EXISTING_BOOK: "modal_switch_to_existing_book",
   MODAL_UPDATE_PAGE: "modal_update_page",
+  MODAL_EDIT_BOOK: "modal_edit_book",
 } as const;
 
 // Sonderwert für die "Neues Buch eintragen"-Option in den Select-Menüs

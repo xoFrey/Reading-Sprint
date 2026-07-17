@@ -9,10 +9,13 @@ import * as leaderboardButton from "../buttons/leaderboardButton";
 import * as joinButton from "../buttons/joinButton";
 import * as myPanelButton from "../buttons/myPanelButton";
 import * as scheduleRegisterButton from "../buttons/scheduleRegisterButton";
-import * as scheduleCancelButton from "../buttons/scheduleCancelButton";
+import * as panelCancelScheduleButton from "../buttons/panelCancelScheduleButton";
 import * as switchBookButton from "../buttons/switchBookButton";
 import * as updatePageButton from "../buttons/updatePageButton";
 import * as graceUpdatePageButton from "../buttons/graceUpdatePageButton";
+import * as myBooksButton from "../buttons/myBooksButton";
+import * as editBookButton from "../buttons/editBookButton";
+import * as deleteBookButton from "../buttons/deleteBookButton";
 import {
   executePause,
   executeResume,
@@ -26,9 +29,12 @@ import * as joinExistingBookModal from "../modals/joinExistingBookModal";
 import * as switchBookModal from "../modals/switchBookModal";
 import * as switchToExistingBookModal from "../modals/switchToExistingBookModal";
 import * as updatePageModal from "../modals/updatePageModal";
+import * as editBookModal from "../modals/editBookModal";
 
 import * as joinBookSelect from "../selects/joinBookSelect";
 import * as switchBookSelect from "../selects/switchBookSelect";
+import * as manageBookSelect from "../selects/manageBookSelect";
+import * as cancelScheduleSelect from "../selects/cancelScheduleSelect";
 
 // Explizite Zuordnung statt automatischem Datei-Scan: Buttons/Modals haben
 // nicht immer eine 1:1-Beziehung Datei <-> customId (z.B. teilen sich Pause/
@@ -38,16 +44,19 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.PANEL_START]: startButton.execute,
   [CustomId.PANEL_END]: endButton.execute,
   [CustomId.PANEL_LEADERBOARD]: leaderboardButton.execute,
+  [CustomId.PANEL_MY_BOOKS]: myBooksButton.execute,
+  [CustomId.PANEL_CANCEL_SCHEDULE]: panelCancelScheduleButton.execute,
   [CustomId.SPRINT_JOIN]: joinButton.execute,
   [CustomId.SPRINT_MY_PANEL]: myPanelButton.execute,
   [CustomId.SCHEDULE_REGISTER]: scheduleRegisterButton.execute,
-  [CustomId.SCHEDULE_CANCEL]: scheduleCancelButton.execute,
   [CustomId.PARTICIPANT_SWITCH_BOOK]: switchBookButton.execute,
   [CustomId.PARTICIPANT_UPDATE_PAGE]: updatePageButton.execute,
   [CustomId.PARTICIPANT_PAUSE]: executePause,
   [CustomId.PARTICIPANT_RESUME]: executeResume,
   [CustomId.PARTICIPANT_LEAVE]: executeLeave,
   [CustomId.SPRINT_GRACE_UPDATE_PAGE]: graceUpdatePageButton.execute,
+  [CustomId.BOOK_EDIT]: editBookButton.execute,
+  [CustomId.BOOK_DELETE]: deleteBookButton.execute,
 };
 
 const modalHandlers: Record<string, (interaction: ModalSubmitInteraction) => Promise<void>> = {
@@ -58,11 +67,14 @@ const modalHandlers: Record<string, (interaction: ModalSubmitInteraction) => Pro
   [CustomId.MODAL_SWITCH_BOOK]: switchBookModal.execute,
   [CustomId.MODAL_SWITCH_TO_EXISTING_BOOK]: switchToExistingBookModal.execute,
   [CustomId.MODAL_UPDATE_PAGE]: updatePageModal.execute,
+  [CustomId.MODAL_EDIT_BOOK]: editBookModal.execute,
 };
 
 const selectHandlers: Record<string, (interaction: StringSelectMenuInteraction) => Promise<void>> = {
   [CustomId.SELECT_JOIN_BOOK]: joinBookSelect.execute,
   [CustomId.SELECT_SWITCH_BOOK]: switchBookSelect.execute,
+  [CustomId.SELECT_MANAGE_BOOK]: manageBookSelect.execute,
+  [CustomId.SELECT_CANCEL_SCHEDULE]: cancelScheduleSelect.execute,
 };
 
 export async function routeButton(interaction: ButtonInteraction): Promise<void> {

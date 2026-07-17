@@ -28,11 +28,15 @@ export async function refreshJoinMessage(client: Client, sprintId: string): Prom
     status: { $ne: "left" },
   });
 
-  const participants: JoinEmbedParticipant[] = activeParticipants.map((participant) => ({
-    userId: participant.userId,
-    bookTitle: getCurrentBook(participant)?.title ?? "—",
-    paused: participant.status === "paused",
-  }));
+  const participants: JoinEmbedParticipant[] = activeParticipants.map((participant) => {
+    const currentBook = getCurrentBook(participant);
+    return {
+      userId: participant.userId,
+      bookTitle: currentBook?.title ?? "—",
+      startPage: currentBook?.startPage ?? 0,
+      paused: participant.status === "paused",
+    };
+  });
 
   const endTime = new Date(sprint.startTime.getTime() + sprint.duration * 60_000);
   const { embed, components } = buildJoinEmbed(sprintId, sprint.duration, endTime, participants);

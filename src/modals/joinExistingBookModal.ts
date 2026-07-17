@@ -3,6 +3,7 @@ import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 import { parsePositiveInt } from "../utils/parsing";
 import { Book } from "../database/models/Book";
+import { Sprint } from "../database/models/Sprint";
 import { joinSprint } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
 import { refreshJoinMessage } from "../services/joinMessageService";
@@ -18,6 +19,12 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const book = await Book.findById(bookId);
   if (!book || currentPage === null) {
     await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
+    return;
+  }
+
+  const sprint = await Sprint.findById(sprintId);
+  if (!sprint || sprint.status !== "active") {
+    await interaction.reply({ content: Texts.end.sprintOver, ephemeral: true });
     return;
   }
 

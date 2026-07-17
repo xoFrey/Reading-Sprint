@@ -1,6 +1,7 @@
 import { Client, TextChannel, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { ScheduledSprint } from "../database/models/ScheduledSprint";
 import { Sprint } from "../database/models/Sprint";
+import { SprintParticipant } from "../database/models/SprintParticipant";
 import { Texts } from "../config/texts";
 import { GRACE_PERIOD_MINUTES, MESSAGE_CLEANUP_DELAY_MINUTES, CustomId, buildCustomId } from "../config/constants";
 import { startSprint, startGracePeriod, finalizeSprint } from "../services/sprintService";
@@ -117,8 +118,16 @@ async function checkActiveSprintEnds(client: Client): Promise<void> {
           .setStyle(ButtonStyle.Primary)
       );
 
+      // Nur die tatsächlichen Teilnehmer pingen (nicht @here/@everyone),
+      // damit sie ihre letzte Seite noch eintragen können.
+      const activeParticipants = await SprintParticipant.find({
+        sprintId: sprint.id,
+        status: { $ne: "left" },
+      });
+      const mentions = activeParticipants.map((p) => `<@${p.userId}>`).join(" ");
+
       const sentMessage = await channel.send({
-        content: Texts.grace.started(GRACE_PERIOD_MINUTES, graceEndUnix),
+        content: `${mentions}\n${Texts.grace.started(GRACE_PERIOD_MINUTES, graceEndUnix)}`,
         components: [row],
       });
 

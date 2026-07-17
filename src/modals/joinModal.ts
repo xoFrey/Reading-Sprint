@@ -5,6 +5,7 @@ import { parsePositiveInt } from "../utils/parsing";
 import { joinSprint } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
 import { refreshJoinMessage } from "../services/joinMessageService";
+import { Sprint } from "../database/models/Sprint";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
@@ -18,6 +19,14 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
 
   if (currentPage === null || totalPages === null) {
     await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
+    return;
+  }
+
+  // Erneute Prüfung (Race Condition): der Sprint könnte zwischen Button-Klick
+  // und Absenden des Modals in die Kulanzzeit gewechselt sein.
+  const sprint = await Sprint.findById(sprintId);
+  if (!sprint || sprint.status !== "active") {
+    await interaction.reply({ content: Texts.end.sprintOver, ephemeral: true });
     return;
   }
 

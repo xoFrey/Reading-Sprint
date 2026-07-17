@@ -3,6 +3,7 @@ import { Texts } from "../config/texts";
 import { parseGermanDateTime, parsePositiveInt } from "../utils/parsing";
 import { ScheduledSprint } from "../database/models/ScheduledSprint";
 import { refreshPanel } from "../services/panelService";
+import { hasOverlappingSprint } from "../services/overlapService";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const dateStr = interaction.fields.getTextInputValue("date");
@@ -19,6 +20,12 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
 
   if (scheduledStart.getTime() <= Date.now()) {
     await interaction.reply({ content: Texts.schedule.inPast, ephemeral: true });
+    return;
+  }
+
+  const overlaps = await hasOverlappingSprint(interaction.guildId!, scheduledStart, duration);
+  if (overlaps) {
+    await interaction.reply({ content: Texts.schedule.overlap, ephemeral: true });
     return;
   }
 

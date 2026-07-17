@@ -16,6 +16,7 @@ export const Texts = {
     success: (timestamp: string) => `✅ Sprint geplant für <t:${timestamp}:F>.`,
     invalidDate: "❌ Ungültiges Datum/Uhrzeit-Format. Bitte TT.MM.JJJJ und HH:MM verwenden.",
     inPast: "❌ Der geplante Zeitpunkt liegt in der Vergangenheit.",
+    overlap: "❌ Dieser Zeitraum überschneidet sich mit einem laufenden oder bereits geplanten Sprint.",
     reminder30: "⏰ Erinnerung: Der Sprint startet in 30 Minuten!",
     reminder5: "⏰ Erinnerung: Der Sprint startet in 5 Minuten!",
   },
@@ -32,6 +33,7 @@ export const Texts = {
     noAdmin: "❌ Nur Administratoren dürfen einen Sprint vorzeitig beenden.",
     noActiveSprint: "❌ Es läuft aktuell kein Sprint.",
     ended: "⏹️ Der Sprint wurde manuell beendet.",
+    sprintOver: "❌ Dieser Sprint ist bereits vorbei, ein Beitritt ist nicht mehr möglich.",
   },
 
   grace: {
@@ -50,6 +52,9 @@ export const Texts = {
     noPermission: "❌ Nur der Ersteller oder ein Administrator kann diesen geplanten Sprint löschen.",
     notFound: "❌ Dieser geplante Sprint wurde bereits gelöscht oder gestartet.",
     success: "🗑️ Geplanter Sprint wurde gelöscht.",
+    noneScheduled: "❌ Aktuell sind keine Sprints geplant.",
+    buttonLabel: "Geplanten Sprint löschen",
+    selectPlaceholder: "Welchen geplanten Sprint löschen?",
   },
 
   join: {
@@ -72,6 +77,19 @@ export const Texts = {
     newBookOptionDescription: "Titel & Gesamtseitenzahl selbst eingeben",
     bookOptionDescription: (totalPages: number) => `${totalPages} Seiten insgesamt`,
     modalTitleExisting: "Weiterlesen",
+  },
+
+  myBooks: {
+    prompt: "📚 Wähle ein Buch aus deiner Bibliothek zum Bearbeiten oder Löschen:",
+    placeholder: "Buch auswählen...",
+    noBooks: "❌ Du hast noch keine Bücher in deiner Bibliothek.",
+    managePrompt: (title: string) => `📖 **${title}** - was möchtest du tun?`,
+    editButtonLabel: "Bearbeiten",
+    deleteButtonLabel: "Löschen",
+    editModalTitle: "Buch bearbeiten",
+    editSuccess: "✅ Buch wurde aktualisiert.",
+    deleteSuccess: (title: string) => `🗑️ **${title}** wurde aus deiner Bibliothek entfernt.`,
+    notFound: "❌ Dieses Buch wurde nicht gefunden (evtl. bereits gelöscht).",
   },
 
   participant: {

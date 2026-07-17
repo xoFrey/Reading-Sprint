@@ -11,6 +11,7 @@ import { Texts } from "../config/texts";
 export interface JoinEmbedParticipant {
   userId: string;
   bookTitle: string;
+  startPage: number;
   paused: boolean;
 }
 
@@ -18,22 +19,29 @@ export function buildJoinEmbed(
   sprintId: string,
   durationMinutes: number,
   endTime: Date,
-  participants: JoinEmbedParticipant[] = []
+  participants: JoinEmbedParticipant[] = [],
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const endUnix = Math.floor(endTime.getTime() / 1000);
+
   const embed = new EmbedBuilder()
     .setColor(Colors.success)
     .setTitle("🏁 Lese-Sprint gestartet!")
     .setDescription(Texts.start.announcement(durationMinutes))
     .addFields({
       name: "Ende",
-      value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`,
+      // Absolute Uhrzeit UND relative Angabe nebeneinander (Punkt 1 aus der Anfrage).
+      value: `<t:${endUnix}:t> Uhr (<t:${endUnix}:R>)`,
     });
 
   if (participants.length > 0) {
     const lines = participants.map(
-      (p) => `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle}`
+      (p) =>
+        `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle} (ab Seite ${p.startPage})`,
     );
-    embed.addFields({ name: `Teilnehmer (${participants.length})`, value: lines.join("\n") });
+    embed.addFields({
+      name: `Teilnehmer (${participants.length})`,
+      value: lines.join("\n"),
+    });
   }
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -46,7 +54,7 @@ export function buildJoinEmbed(
       .setCustomId(buildCustomId(CustomId.SPRINT_MY_PANEL, sprintId))
       .setLabel(Texts.join.myPanelButtonLabel)
       .setEmoji("📋")
-      .setStyle(ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return { embed, components: [row] };

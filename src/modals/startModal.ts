@@ -3,6 +3,7 @@ import { Texts } from "../config/texts";
 import { parsePositiveInt } from "../utils/parsing";
 import { Sprint } from "../database/models/Sprint";
 import { startSprint } from "../services/sprintService";
+import { hasOverlappingSprint } from "../services/overlapService";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
@@ -24,6 +25,12 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   });
   if (existingActive) {
     await interaction.editReply({ content: Texts.start.alreadyActive });
+    return;
+  }
+
+  const overlaps = await hasOverlappingSprint(interaction.guildId!, new Date(), duration);
+  if (overlaps) {
+    await interaction.editReply({ content: Texts.schedule.overlap });
     return;
   }
 

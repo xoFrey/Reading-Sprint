@@ -6,6 +6,7 @@ import {
 import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from "../config/constants";
 import { Texts } from "../config/texts";
 import { getUnfinishedBooks } from "../services/bookService";
+import { Sprint } from "../database/models/Sprint";
 
 /**
  * Zeigt zuerst eine Dropdown-Auswahl der unbeendeten Bücher aus der
@@ -22,6 +23,15 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const { args } = parseCustomId(interaction.customId);
   const [sprintId] = args;
+
+  // Beitritt nur, solange der Sprint noch wirklich aktiv liest (nicht in der
+  // Kulanzzeit oder bereits beendet) - siehe Bug-Report: sonst konnte man
+  // während der Kulanzzeit noch "frisch" beitreten.
+  const sprint = await Sprint.findById(sprintId);
+  if (!sprint || sprint.status !== "active") {
+    await interaction.editReply({ content: Texts.end.sprintOver });
+    return;
+  }
 
   const unfinishedBooks = await getUnfinishedBooks(interaction.user.id, interaction.guildId!);
 
