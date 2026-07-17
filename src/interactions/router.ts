@@ -9,6 +9,7 @@ import * as leaderboardButton from "../buttons/leaderboardButton";
 import * as joinButton from "../buttons/joinButton";
 import * as myPanelButton from "../buttons/myPanelButton";
 import * as scheduleRegisterButton from "../buttons/scheduleRegisterButton";
+import * as scheduleCancelButton from "../buttons/scheduleCancelButton";
 import * as switchBookButton from "../buttons/switchBookButton";
 import * as updatePageButton from "../buttons/updatePageButton";
 import * as graceUpdatePageButton from "../buttons/graceUpdatePageButton";
@@ -40,6 +41,7 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.SPRINT_JOIN]: joinButton.execute,
   [CustomId.SPRINT_MY_PANEL]: myPanelButton.execute,
   [CustomId.SCHEDULE_REGISTER]: scheduleRegisterButton.execute,
+  [CustomId.SCHEDULE_CANCEL]: scheduleCancelButton.execute,
   [CustomId.PARTICIPANT_SWITCH_BOOK]: switchBookButton.execute,
   [CustomId.PARTICIPANT_UPDATE_PAGE]: updatePageButton.execute,
   [CustomId.PARTICIPANT_PAUSE]: executePause,

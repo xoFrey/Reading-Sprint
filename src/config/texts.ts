@@ -46,6 +46,12 @@ export const Texts = {
     unregistered: "🔕 Anmeldung entfernt.",
   },
 
+  scheduleCancel: {
+    noPermission: "❌ Nur der Ersteller oder ein Administrator kann diesen geplanten Sprint löschen.",
+    notFound: "❌ Dieser geplante Sprint wurde bereits gelöscht oder gestartet.",
+    success: "🗑️ Geplanter Sprint wurde gelöscht.",
+  },
+
   join: {
     modalTitle: "Sprint beitreten",
     bookTitleLabel: "Buchtitel",

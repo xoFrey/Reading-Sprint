@@ -212,19 +212,28 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
     // die gesamte Auswertung crashen lassen, sondern einfach mit 0 gelten.
     const totalPagesRead = Number.isFinite(rawPagesRead) ? rawPagesRead : 0;
 
+    // Ziel gilt nur als erreicht, wenn es beim SPRINTSTART noch nicht bereits
+    // erfüllt war (startPage < goalPage) UND am Ende erreicht wurde. Sonst
+    // würde z.B. "0 Seiten gelesen, Ziel Seite 30, Start bei Seite 35" fälschlich
+    // als "Ziel erreicht" zählen, obwohl gar kein Fortschritt stattfand.
     const goalReached = participant.books.some(
-      (book) => book.goalPage !== undefined && book.currentPage >= book.goalPage
+      (book) =>
+        book.goalPage !== undefined &&
+        book.startPage < book.goalPage &&
+        book.currentPage >= book.goalPage
     );
     const finishedBooksCount = participant.books.filter((book) => book.isFinished).length;
 
     // Lesezeit = Zeit von Beitritt bis Sprintende bzw. bis zum vorzeitigen
-    // Verlassen (leftAt). So zählt bei einem frühen Ausstieg nur die
-    // tatsächlich verbrachte Zeit, nicht die volle Sprintdauer.
+    // Verlassen (leftAt), gedeckelt auf die geplante Sprintdauer. Ohne Deckel
+    // würde die Wartezeit während der Kulanzzeit (bis zu GRACE_PERIOD_MINUTES)
+    // fälschlich als zusätzliche "Lesezeit" mitgezählt.
     const participantEndTime = participant.leftAt ?? sprint.endTime ?? new Date();
     const rawMinutesRead = Math.round(
       (participantEndTime.getTime() - participant.joinedAt.getTime()) / 60_000
     );
-    const minutesRead = Number.isFinite(rawMinutesRead) ? Math.max(0, rawMinutesRead) : 0;
+    const cappedMinutesRead = Math.min(rawMinutesRead, sprint.duration);
+    const minutesRead = Number.isFinite(cappedMinutesRead) ? Math.max(0, cappedMinutesRead) : 0;
 
     let user = await User.findOne({ discordId: participant.userId, guildId: participant.guildId });
     if (!user) {

@@ -5,6 +5,7 @@ import { parsePositiveInt } from "../utils/parsing";
 import { Book } from "../database/models/Book";
 import { joinSprint } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
+import { refreshJoinMessage } from "../services/joinMessageService";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
@@ -50,4 +51,6 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     components,
     ephemeral: true,
   });
+
+  await refreshJoinMessage(interaction.client, sprintId);
 }

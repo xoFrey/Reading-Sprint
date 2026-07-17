@@ -17,7 +17,26 @@ export const MIN_PAGES_FOR_STREAK = 5;
 /**
  * Verschmilzt die globalen Defaults mit optionalen Server-Overrides.
  * So muss ein Server nur die Werte angeben, die er wirklich ändern will.
+ *
+ * WICHTIG: Mongoose legt beim Erstellen eines Guild-Dokuments automatisch ein
+ * leeres xpConfig-Unterdokument an, dessen Zahlenfelder explizit auf
+ * "undefined" stehen (nicht einfach "nicht vorhanden"). Ein normales
+ * Object-Spread ({...DEFAULT_XP_CONFIG, ...override}) würde diese
+ * undefined-Werte fälschlich über die echten Defaults legen und z.B.
+ * pagesPerXP auf undefined setzen -> NaN bei jeder XP-Berechnung. Deshalb
+ * hier gezielt nur definierte Werte übernehmen.
  */
 export function resolveXPConfig(override?: Partial<XPConfig>): XPConfig {
-  return { ...DEFAULT_XP_CONFIG, ...override };
+  const config: XPConfig = { ...DEFAULT_XP_CONFIG };
+
+  if (override) {
+    for (const key of Object.keys(DEFAULT_XP_CONFIG) as (keyof XPConfig)[]) {
+      const value = override[key];
+      if (value !== undefined && value !== null && Number.isFinite(value)) {
+        config[key] = value;
+      }
+    }
+  }
+
+  return config;
 }

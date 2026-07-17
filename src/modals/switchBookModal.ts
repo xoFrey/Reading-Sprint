@@ -5,6 +5,7 @@ import { parsePositiveInt } from "../utils/parsing";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook, updateCurrentPage, switchBook } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
+import { refreshJoinMessage } from "../services/joinMessageService";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
@@ -66,4 +67,6 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     components,
     ephemeral: true,
   });
+
+  await refreshJoinMessage(interaction.client, updatedParticipant.sprintId.toString());
 }

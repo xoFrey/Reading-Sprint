@@ -4,6 +4,7 @@ import { Texts } from "../config/texts";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { setParticipantStatus } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
+import { refreshJoinMessage } from "../services/joinMessageService";
 
 /**
  * Gemeinsame Logik für Pause/Weiter/Verlassen, da sich alle drei nur durch
@@ -19,12 +20,16 @@ async function handleStatusChange(
 
   await setParticipantStatus(participantId, status);
 
+  // sprintId wird für refreshJoinMessage gebraucht - der Datensatz existiert
+  // auch nach "left" noch (nur der Status ändert sich), daher hier einmalig laden.
+  const participant = await SprintParticipant.findById(participantId);
+
   if (status === "left") {
     await interaction.update({ content: Texts.participant.left, embeds: [], components: [] });
+    if (participant) await refreshJoinMessage(interaction.client, participant.sprintId.toString());
     return;
   }
 
-  const participant = await SprintParticipant.findById(participantId);
   if (!participant) {
     await interaction.reply({ content: Texts.errors.notInSprint, ephemeral: true });
     return;
@@ -34,6 +39,7 @@ async function handleStatusChange(
   const statusText = status === "paused" ? Texts.participant.paused : Texts.participant.resumed;
 
   await interaction.update({ content: statusText, embeds: [embed], components });
+  await refreshJoinMessage(interaction.client, participant.sprintId.toString());
 }
 
 export async function executePause(interaction: ButtonInteraction): Promise<void> {

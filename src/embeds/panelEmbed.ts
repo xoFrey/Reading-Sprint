@@ -85,6 +85,29 @@ export function buildPanelEmbed(
     );
 
     components.push(registerRow);
+
+    // Zweite Zusatz-Reihe: ein Löschen-Button pro geplantem Sprint. Getrennt
+    // von der Anmelde-Reihe, damit beide Aktionen (anmelden vs. löschen)
+    // optisch klar unterscheidbar bleiben. Berechtigungsprüfung (nur
+    // Ersteller/Admin) passiert im Handler, nicht hier.
+    const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      upcomingSprints.map((sprint) => {
+        const timeLabel = sprint.scheduledStart.toLocaleString("de-DE", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        return new ButtonBuilder()
+          .setCustomId(buildCustomId(CustomId.SCHEDULE_CANCEL, sprint.id))
+          .setLabel(timeLabel)
+          .setEmoji("🗑️")
+          .setStyle(ButtonStyle.Danger);
+      })
+    );
+
+    components.push(cancelRow);
   }
 
   return { embed, components };
