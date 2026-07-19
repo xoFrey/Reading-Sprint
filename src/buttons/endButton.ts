@@ -31,7 +31,12 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const imageBuffer = await buildSprintEndImage(interaction.client, interaction.guildId!, results);
+  const imageBuffer = await buildSprintEndImage(
+    interaction.client,
+    interaction.guildId!,
+    results,
+    activeSprint.duration
+  );
   const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
 
   const message = await interaction.editReply({ content: Texts.end.ended, files: [attachment] });

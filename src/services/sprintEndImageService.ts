@@ -17,6 +17,7 @@ export async function buildSprintEndImage(
   client: Client,
   guildId: string,
   results: ParticipantResult[],
+  sprintDurationMinutes: number,
 ): Promise<Buffer> {
   const guild = await client.guilds.fetch(guildId).catch(() => null);
 
@@ -63,5 +64,8 @@ export async function buildSprintEndImage(
     });
   }
 
-  return buildCardListImage({ title: "Sprint beendet!" }, entries);
+  return buildCardListImage(
+    { title: "Sprint beendet!", subtitle: `Geplante Dauer: ${formatMinutes(sprintDurationMinutes)}` },
+    entries
+  );
 }

@@ -10,6 +10,7 @@ export interface ISprint extends Document {
   messageId?: string; // ID des öffentlichen "Beitreten"-Embeds
   graceMessageId?: string; // ID der Kulanzzeit-Ankündigung
   endMessageId?: string; // ID der Sprint-Abschluss-Bild-Nachricht
+  reminderMessageIds: string[]; // von der ScheduledSprint übernommene Erinnerungs-Nachrichten
 
   status: SprintStatus;
 
@@ -32,6 +33,7 @@ const SprintSchema = new Schema<ISprint>(
     messageId: { type: String },
     graceMessageId: { type: String },
     endMessageId: { type: String },
+    reminderMessageIds: { type: [String], default: [] },
 
     status: {
       type: String,

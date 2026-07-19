@@ -15,6 +15,7 @@ export interface IScheduledSprint extends Document {
     thirtyMin: boolean;
     fiveMin: boolean;
   };
+  reminderMessageIds: string[]; // IDs der gesendeten Erinnerungs-Nachrichten (für Cleanup)
 
   status: ScheduledSprintStatus;
   createdBy: string; // discordId
@@ -40,6 +41,7 @@ const ScheduledSprintSchema = new Schema<IScheduledSprint>(
       thirtyMin: { type: Boolean, default: false },
       fiveMin: { type: Boolean, default: false },
     },
+    reminderMessageIds: { type: [String], default: [] },
 
     status: {
       type: String,

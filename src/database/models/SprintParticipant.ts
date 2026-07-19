@@ -15,6 +15,13 @@ export interface ISprintParticipant extends Document {
 
   joinedAt: Date;
   leftAt?: Date;
+
+  // Pause-Tracking: pausedAt ist gesetzt, solange der Teilnehmer GERADE
+  // pausiert (undefined sonst). totalPausedMs summiert alle ABGESCHLOSSENEN
+  // Pausen (Pause -> Weiter). Wird beim Sprintabschluss von der Lesezeit
+  // abgezogen, damit "wie lange war ich wirklich aktiv am Lesen" stimmt.
+  pausedAt?: Date;
+  totalPausedMs: number;
 }
 
 const ParticipantBookSchema = new Schema<ParticipantBook>(
@@ -46,6 +53,9 @@ const SprintParticipantSchema = new Schema<ISprintParticipant>({
 
   joinedAt: { type: Date, default: Date.now },
   leftAt: { type: Date },
+
+  pausedAt: { type: Date },
+  totalPausedMs: { type: Number, default: 0 },
 });
 
 // Ein Nutzer kann pro Sprint nur einmal teilnehmen.

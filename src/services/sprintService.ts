@@ -145,14 +145,38 @@ export async function updateCurrentPage(
   await participant.save();
 }
 
+/**
+ * Ändert den Status eines Teilnehmers und pflegt dabei das Pause-Tracking:
+ * - Pause: merkt sich den Zeitpunkt (pausedAt)
+ * - Weiter: rechnet die abgelaufene Pausenzeit in totalPausedMs ein
+ * - Verlassen: falls gerade pausiert, wird auch diese letzte Pause noch
+ *   eingerechnet, bevor leftAt gesetzt wird (sonst würde die Pausenzeit
+ *   zwischen letztem Pausieren und Verlassen fälschlich als Lesezeit zählen)
+ */
 export async function setParticipantStatus(
   participantId: string,
   status: "active" | "paused" | "left"
 ): Promise<void> {
-  const update: Record<string, unknown> = { status };
-  if (status === "left") update.leftAt = new Date();
+  const participant = await SprintParticipant.findById(participantId);
+  if (!participant) return;
 
-  await SprintParticipant.findByIdAndUpdate(participantId, update);
+  const now = new Date();
+
+  if (status === "paused" && !participant.pausedAt) {
+    participant.pausedAt = now;
+  }
+
+  if ((status === "active" || status === "left") && participant.pausedAt) {
+    participant.totalPausedMs += now.getTime() - participant.pausedAt.getTime();
+    participant.pausedAt = undefined;
+  }
+
+  if (status === "left") {
+    participant.leftAt = now;
+  }
+
+  participant.status = status;
+  await participant.save();
 }
 
 /**
@@ -225,12 +249,22 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
     const finishedBooksCount = participant.books.filter((book) => book.isFinished).length;
 
     // Lesezeit = Zeit von Beitritt bis Sprintende bzw. bis zum vorzeitigen
-    // Verlassen (leftAt), gedeckelt auf die geplante Sprintdauer. Ohne Deckel
-    // würde die Wartezeit während der Kulanzzeit (bis zu GRACE_PERIOD_MINUTES)
-    // fälschlich als zusätzliche "Lesezeit" mitgezählt.
+    // Verlassen (leftAt), MINUS aller Pausenzeiten, gedeckelt auf die geplante
+    // Sprintdauer. Ohne Deckel würde die Wartezeit während der Kulanzzeit
+    // (bis zu GRACE_PERIOD_MINUTES) fälschlich als zusätzliche "Lesezeit"
+    // mitgezählt werden.
     const participantEndTime = participant.leftAt ?? sprint.endTime ?? new Date();
+
+    // Falls noch eine Pause "läuft" (z.B. wer pausiert hat und den Sprint nie
+    // wieder aktiv fortgesetzt hat), zählt die Zeit bis zum Sprintende auch
+    // noch als Pause - sonst würde sie fälschlich als Lesezeit durchgehen.
+    const stillRunningPauseMs = participant.pausedAt
+      ? Math.max(0, participantEndTime.getTime() - participant.pausedAt.getTime())
+      : 0;
+    const totalPausedMs = participant.totalPausedMs + stillRunningPauseMs;
+
     const rawMinutesRead = Math.round(
-      (participantEndTime.getTime() - participant.joinedAt.getTime()) / 60_000
+      (participantEndTime.getTime() - participant.joinedAt.getTime() - totalPausedMs) / 60_000
     );
     const cappedMinutesRead = Math.min(rawMinutesRead, sprint.duration);
     const minutesRead = Number.isFinite(cappedMinutesRead) ? Math.max(0, cappedMinutesRead) : 0;

@@ -48,14 +48,16 @@ async function checkReminders(client: Client): Promise<void> {
     if (!channel) continue;
 
     if (!scheduled.remindersSent.thirtyMin && msUntilStart <= 30 * 60_000 && msUntilStart > 5 * 60_000) {
-      await channel.send(Texts.schedule.reminder30);
+      const sentMessage = await channel.send(Texts.schedule.reminder30);
       scheduled.remindersSent.thirtyMin = true;
+      scheduled.reminderMessageIds.push(sentMessage.id);
       await scheduled.save();
     }
 
     if (!scheduled.remindersSent.fiveMin && msUntilStart <= 5 * 60_000 && msUntilStart > 0) {
-      await channel.send(Texts.schedule.reminder5);
+      const sentMessage = await channel.send(Texts.schedule.reminder5);
       scheduled.remindersSent.fiveMin = true;
+      scheduled.reminderMessageIds.push(sentMessage.id);
       await scheduled.save();
     }
   }
@@ -88,6 +90,9 @@ async function checkScheduledStarts(client: Client): Promise<void> {
     const sentMessage = await channel.send({ content: mentions || undefined, embeds: [embed], components });
 
     sprint.messageId = sentMessage.id;
+    // Erinnerungs-Message-IDs von der ScheduledSprint übernehmen, damit der
+    // Cleanup-Job (checkMessageCleanup) sie später mit aufräumen kann.
+    sprint.reminderMessageIds = scheduled.reminderMessageIds;
     await sprint.save();
 
     scheduled.status = "triggered";
@@ -154,7 +159,7 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
       continue;
     }
 
-    const imageBuffer = await buildSprintEndImage(client, sprint.guildId, results);
+    const imageBuffer = await buildSprintEndImage(client, sprint.guildId, results, sprint.duration);
     const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
     const sentMessage = await channel.send({ files: [attachment] });
 
@@ -166,7 +171,7 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
 }
 
 /**
- * Löscht ALLE Kanal-Nachrichten eines Sprints (Beitreten-Embed,
+ * Löscht ALLE Kanal-Nachrichten eines Sprints (Beitreten-Embed, Erinnerungen,
  * Kulanzzeit-Ankündigung, Abschluss-Bild), sobald er seit mindestens
  * MESSAGE_CLEANUP_DELAY_MINUTES beendet ist. So bleibt der Kanal übersichtlich
  * und zeigt nur noch aktive/geplante Sprints.
@@ -186,7 +191,12 @@ async function checkMessageCleanup(client: Client): Promise<void> {
     if (channel) {
       // Jeder Löschversuch unabhängig von den anderen - falls eine Nachricht
       // bereits manuell gelöscht wurde, soll das die übrigen nicht verhindern.
-      const messageIds = [sprint.messageId, sprint.graceMessageId, sprint.endMessageId];
+      const messageIds = [
+        sprint.messageId,
+        sprint.graceMessageId,
+        sprint.endMessageId,
+        ...sprint.reminderMessageIds,
+      ];
 
       for (const messageId of messageIds) {
         if (!messageId) continue;
