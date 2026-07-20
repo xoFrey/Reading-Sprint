@@ -25,6 +25,7 @@ export interface ISprint extends Document {
   endTime?: Date;
   graceEndTime?: Date; // Ende der Kulanzzeit nach Sprintende, in der noch aktualisiert werden darf
   messagesCleanedUp: boolean; // true, sobald die Kanal-Nachrichten aufgeräumt wurden
+  participantsPage: number; // aktuell angezeigte Seite der Teilnehmerliste im öffentlichen Embed
 
   createdBy: string; // discordId
 
@@ -55,6 +56,7 @@ const SprintSchema = new Schema<ISprint>(
     endTime: { type: Date },
     graceEndTime: { type: Date },
     messagesCleanedUp: { type: Boolean, default: false },
+    participantsPage: { type: Number, default: 1 },
 
     createdBy: { type: String, required: true },
   },

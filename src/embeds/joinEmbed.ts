@@ -15,39 +15,26 @@ export interface JoinEmbedParticipant {
   paused: boolean;
 }
 
-// Discord erlaubt maximal 1024 Zeichen pro Embed-Feld-Wert. Bei vielen
-// Teilnehmern reicht ein einzelnes Feld nicht mehr aus - diese Funktion
-// verteilt die Zeilen auf mehrere Felder, ohne eine Zeile mittendrin abzuschneiden.
-const MAX_FIELD_LENGTH = 1024;
-// Grobe Obergrenze an Feldern für die Teilnehmerliste, damit das Embed
-// insgesamt nicht das Gesamtlimit von 25 Feldern / 6000 Zeichen sprengt.
-const MAX_PARTICIPANT_FIELDS = 15;
+export const PARTICIPANTS_PAGE_SIZE = 10;
 
-function chunkLines(lines: string[], maxLength: number): string[] {
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const line of lines) {
-    const candidate = current ? `${current}\n${line}` : line;
-    if (candidate.length > maxLength) {
-      if (current) chunks.push(current);
-      current = line;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) chunks.push(current);
-
-  return chunks;
+export function getTotalParticipantPages(participantCount: number): number {
+  return Math.max(1, Math.ceil(participantCount / PARTICIPANTS_PAGE_SIZE));
 }
 
 export function buildJoinEmbed(
   sprintId: string,
   durationMinutes: number,
   endTime: Date,
-  participants: JoinEmbedParticipant[] = []
+  participants: JoinEmbedParticipant[] = [],
+  page = 1
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
   const endUnix = Math.floor(endTime.getTime() / 1000);
+  const totalPages = getTotalParticipantPages(participants.length);
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pageParticipants = participants.slice(
+    (safePage - 1) * PARTICIPANTS_PAGE_SIZE,
+    safePage * PARTICIPANTS_PAGE_SIZE
+  );
 
   const embed = new EmbedBuilder()
     .setColor(Colors.success)
@@ -55,33 +42,22 @@ export function buildJoinEmbed(
     .setDescription(Texts.start.announcement(durationMinutes))
     .addFields({
       name: "Ende",
-      // Absolute Uhrzeit UND relative Angabe nebeneinander (Punkt 1 aus der Anfrage).
+      // Absolute Uhrzeit UND relative Angabe nebeneinander.
       value: `<t:${endUnix}:t> Uhr (<t:${endUnix}:R>) · Dauer: ${durationMinutes} Min`,
     });
 
   if (participants.length > 0) {
-    const lines = participants.map(
+    const lines = pageParticipants.map(
       (p) => `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle} (ab Seite ${p.startPage})`
     );
-    let chunks = chunkLines(lines, MAX_FIELD_LENGTH);
-
-    // Absicherung nach oben: sollte es je so viele Teilnehmer geben, dass
-    // selbst das Feld-Limit gesprengt würde, wird gekürzt statt zu crashen.
-    if (chunks.length > MAX_PARTICIPANT_FIELDS) {
-      chunks = chunks.slice(0, MAX_PARTICIPANT_FIELDS);
-      chunks[chunks.length - 1] += "\n… und weitere";
-    }
-
-    chunks.forEach((chunk, index) => {
-      const name =
-        chunks.length > 1
-          ? `Teilnehmer (${participants.length}) — Teil ${index + 1}/${chunks.length}`
-          : `Teilnehmer (${participants.length})`;
-      embed.addFields({ name, value: chunk });
-    });
+    const fieldName =
+      totalPages > 1
+        ? `Teilnehmer (${participants.length}) — Seite ${safePage}/${totalPages}`
+        : `Teilnehmer (${participants.length})`;
+    embed.addFields({ name: fieldName, value: lines.join("\n") });
   }
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const joinRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(buildCustomId(CustomId.SPRINT_JOIN, sprintId))
       .setLabel("Beitreten")
@@ -94,5 +70,23 @@ export function buildJoinEmbed(
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embed, components: [row] };
+  const components = [joinRow];
+
+  if (totalPages > 1) {
+    const pageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(buildCustomId(CustomId.JOIN_PARTICIPANTS_PAGE, sprintId, String(safePage - 1)))
+        .setLabel("◀ Zurück")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(safePage <= 1),
+      new ButtonBuilder()
+        .setCustomId(buildCustomId(CustomId.JOIN_PARTICIPANTS_PAGE, sprintId, String(safePage + 1)))
+        .setLabel("Weiter ▶")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(safePage >= totalPages)
+    );
+    components.push(pageRow);
+  }
+
+  return { embed, components };
 }

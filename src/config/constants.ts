@@ -21,6 +21,7 @@ export const CustomId = {
 
   SPRINT_GRACE_UPDATE_PAGE: "sprint_grace_update_page",
   SPRINT_RESULTS_PAGE: "sprint_results_page",
+  JOIN_PARTICIPANTS_PAGE: "join_participants_page",
 
   BOOK_EDIT: "book_edit",
   BOOK_DELETE: "book_delete",

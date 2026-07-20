@@ -39,7 +39,13 @@ export async function refreshJoinMessage(client: Client, sprintId: string): Prom
   });
 
   const endTime = new Date(sprint.startTime.getTime() + sprint.duration * 60_000);
-  const { embed, components } = buildJoinEmbed(sprintId, sprint.duration, endTime, participants);
+  const { embed, components } = buildJoinEmbed(
+    sprintId,
+    sprint.duration,
+    endTime,
+    participants,
+    sprint.participantsPage
+  );
 
   await message.edit({ embeds: [embed], components }).catch(() => undefined);
 }
