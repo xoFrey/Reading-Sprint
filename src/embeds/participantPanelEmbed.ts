@@ -34,8 +34,13 @@ export function buildParticipantPanel(
       { name: "Gelesen in diesem Sprint", value: `${Math.max(0, pagesRead)} Seiten`, inline: true }
     );
 
-    if (currentBook.goalPage) {
-      embed.addFields({ name: "Ziel", value: `Seite ${currentBook.goalPage}`, inline: true });
+    if (currentBook.goalPage !== undefined) {
+      const pagesWanted = currentBook.goalPage - currentBook.startPage;
+      embed.addFields({
+        name: "Ziel",
+        value: `${pagesWanted} Seiten (bis Seite ${currentBook.goalPage})`,
+        inline: true,
+      });
     }
   }
 

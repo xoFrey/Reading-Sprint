@@ -15,13 +15,18 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const title = interaction.fields.getTextInputValue("title").trim();
   const currentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
   const totalPages = parsePositiveInt(interaction.fields.getTextInputValue("totalPages"));
-  const goalPageRaw = interaction.fields.getTextInputValue("goalPage");
-  const goalPage = goalPageRaw ? parseNonNegativeInt(goalPageRaw) ?? undefined : undefined;
+  const goalPagesRaw = interaction.fields.getTextInputValue("goalPage");
+  const goalPagesToRead = goalPagesRaw ? parsePositiveInt(goalPagesRaw) : null;
 
-  if (currentPage === null || totalPages === null) {
+  if (currentPage === null || totalPages === null || (goalPagesRaw && goalPagesToRead === null)) {
     await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
     return;
   }
+
+  // Nutzer geben ein, WIE VIELE Seiten sie lesen wollen (nicht die absolute
+  // Zielseite) - intern rechnen wir das auf die absolute Seite um, damit der
+  // Rest des Codes (goalReached-Prüfung etc.) unverändert bleibt.
+  const goalPage = goalPagesToRead ? currentPage + goalPagesToRead : undefined;
 
   // Erneute Prüfung (Race Condition): der Sprint könnte zwischen Button-Klick
   // und Absenden des Modals in die Kulanzzeit gewechselt sein.

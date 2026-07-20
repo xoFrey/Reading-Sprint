@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseNonNegativeInt } from "../utils/parsing";
+import { parseNonNegativeInt, parsePositiveInt } from "../utils/parsing";
 import { Book } from "../database/models/Book";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook, updateCurrentPage, switchBook } from "../services/sprintService";
@@ -14,16 +14,25 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
 
   const oldCurrentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("oldCurrentPage"));
   const currentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
-  const goalPageRaw = interaction.fields.getTextInputValue("goalPage");
-  const goalPage = goalPageRaw ? parseNonNegativeInt(goalPageRaw) ?? undefined : undefined;
+  const goalPagesRaw = interaction.fields.getTextInputValue("goalPage");
+  const goalPagesToRead = goalPagesRaw ? parsePositiveInt(goalPagesRaw) : null;
 
   const book = await Book.findById(bookId);
   const participant = await SprintParticipant.findById(participantId);
 
-  if (!book || !participant || currentPage === null) {
+  if (
+    !book ||
+    !participant ||
+    currentPage === null ||
+    (goalPagesRaw && goalPagesToRead === null)
+  ) {
     await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
     return;
   }
+
+  // Nutzer geben ein, WIE VIELE Seiten sie lesen wollen (nicht die absolute
+  // Zielseite) - bezogen auf die Startseite des NEUEN Buchs.
+  const goalPage = goalPagesToRead ? currentPage + goalPagesToRead : undefined;
 
   // Erst die Seite im BISHERIGEN Buch speichern (gleiche Validierung wie überall).
   const oldBook = getCurrentBook(participant);

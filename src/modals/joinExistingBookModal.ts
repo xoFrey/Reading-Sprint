@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseNonNegativeInt } from "../utils/parsing";
+import { parseNonNegativeInt, parsePositiveInt } from "../utils/parsing";
 import { Book } from "../database/models/Book";
 import { Sprint } from "../database/models/Sprint";
 import { SprintParticipant } from "../database/models/SprintParticipant";
@@ -14,14 +14,18 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const [sprintId, bookId] = args;
 
   const currentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
-  const goalPageRaw = interaction.fields.getTextInputValue("goalPage");
-  const goalPage = goalPageRaw ? parseNonNegativeInt(goalPageRaw) ?? undefined : undefined;
+  const goalPagesRaw = interaction.fields.getTextInputValue("goalPage");
+  const goalPagesToRead = goalPagesRaw ? parsePositiveInt(goalPagesRaw) : null;
 
   const book = await Book.findById(bookId);
-  if (!book || currentPage === null) {
+  if (!book || currentPage === null || (goalPagesRaw && goalPagesToRead === null)) {
     await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
     return;
   }
+
+  // Nutzer geben ein, WIE VIELE Seiten sie lesen wollen (nicht die absolute
+  // Zielseite) - intern rechnen wir das auf die absolute Seite um.
+  const goalPage = goalPagesToRead ? currentPage + goalPagesToRead : undefined;
 
   const sprint = await Sprint.findById(sprintId);
   if (!sprint || sprint.status !== "active") {

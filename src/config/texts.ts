@@ -64,7 +64,7 @@ export const Texts = {
     bookTitleLabel: "Buchtitel",
     currentPageLabel: "Aktuelle Seite",
     totalPagesLabel: "Gesamtseitenzahl",
-    goalPageLabel: "Seitenziel (optional)",
+    goalPageLabel: "Seitenziel: wie viele Seiten? (optional)",
     alreadyJoined: "❌ Du nimmst bereits an diesem Sprint teil.",
     alreadyLeft: "❌ Du hast diesen Sprint bereits verlassen und kannst nicht erneut beitreten.",
     myPanelButtonLabel: "Mein Panel",
