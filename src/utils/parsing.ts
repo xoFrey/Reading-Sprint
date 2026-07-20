@@ -20,8 +20,17 @@ export function parseGermanDateTime(dateStr: string, timeStr: string): Date | nu
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-// Parst eine positive Ganzzahl aus einem Modal-Textfeld, gibt null bei ungültiger Eingabe zurück.
+// Parst eine positive Ganzzahl (>0) aus einem Modal-Textfeld, z.B. für
+// Gesamtseitenzahl oder Dauer - dort ergibt 0 keinen Sinn.
 export function parsePositiveInt(value: string): number | null {
   const parsed = Number.parseInt(value.trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+// Parst eine nicht-negative Ganzzahl (>=0) aus einem Modal-Textfeld - für
+// Seitenangaben (aktuelle Seite, Ziel-Seite), da man z.B. bei Seite 0
+// (vor dem ersten gelesenen Kapitel) starten können muss.
+export function parseNonNegativeInt(value: string): number | null {
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }

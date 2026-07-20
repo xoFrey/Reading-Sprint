@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parsePositiveInt } from "../utils/parsing";
+import { parseNonNegativeInt } from "../utils/parsing";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook, updateCurrentPage } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
@@ -10,7 +10,7 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const { args } = parseCustomId(interaction.customId);
   const [participantId] = args;
 
-  const newPage = parsePositiveInt(interaction.fields.getTextInputValue("currentPage"));
+  const newPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
 
   const participant = await SprintParticipant.findById(participantId);
   if (!participant) {

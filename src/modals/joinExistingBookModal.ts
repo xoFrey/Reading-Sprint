@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parsePositiveInt } from "../utils/parsing";
+import { parseNonNegativeInt } from "../utils/parsing";
 import { Book } from "../database/models/Book";
 import { Sprint } from "../database/models/Sprint";
 import { SprintParticipant } from "../database/models/SprintParticipant";
@@ -13,9 +13,9 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const { args } = parseCustomId(interaction.customId);
   const [sprintId, bookId] = args;
 
-  const currentPage = parsePositiveInt(interaction.fields.getTextInputValue("currentPage"));
+  const currentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
   const goalPageRaw = interaction.fields.getTextInputValue("goalPage");
-  const goalPage = goalPageRaw ? parsePositiveInt(goalPageRaw) ?? undefined : undefined;
+  const goalPage = goalPageRaw ? parseNonNegativeInt(goalPageRaw) ?? undefined : undefined;
 
   const book = await Book.findById(bookId);
   if (!book || currentPage === null) {
