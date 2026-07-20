@@ -23,6 +23,11 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
+  if (currentPage > book.totalPages) {
+    await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
+    return;
+  }
+
   // Nutzer geben ein, WIE VIELE Seiten sie lesen wollen (nicht die absolute
   // Zielseite) - intern rechnen wir das auf die absolute Seite um.
   const goalPage = goalPagesToRead ? currentPage + goalPagesToRead : undefined;

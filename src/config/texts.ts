@@ -67,6 +67,7 @@ export const Texts = {
     goalPageLabel: "Seitenziel: wie viele Seiten? (optional)",
     alreadyJoined: "❌ Du nimmst bereits an diesem Sprint teil.",
     alreadyLeft: "❌ Du hast diesen Sprint bereits verlassen und kannst nicht erneut beitreten.",
+    currentPageExceedsTotal: "❌ Die aktuelle Seite darf nicht größer als die Gesamtseitenzahl des Buchs sein.",
     myPanelButtonLabel: "Mein Panel",
     notYetJoined: "❌ Du nimmst noch nicht an diesem Sprint teil. Klicke zuerst auf \"Beitreten\".",
     welcome: (bookTitle: string) =>
