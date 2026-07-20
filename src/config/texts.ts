@@ -11,10 +11,12 @@ export const Texts = {
   schedule: {
     modalTitle: "Sprint planen",
     dateLabel: "Datum (TT.MM.JJJJ)",
-    timeLabel: "Uhrzeit (HH:MM)",
-    durationLabel: "Dauer (in Minuten)",
-    success: (timestamp: string) => `✅ Sprint geplant für <t:${timestamp}:F>.`,
+    startTimeLabel: "Anfangsuhrzeit (HH:MM)",
+    endTimeLabel: "Enduhrzeit (HH:MM)",
+    success: (timestamp: string, duration: string) =>
+      `✅ Sprint geplant für <t:${timestamp}:F> (Dauer: ${duration}).`,
     invalidDate: "❌ Ungültiges Datum/Uhrzeit-Format. Bitte TT.MM.JJJJ und HH:MM verwenden.",
+    endBeforeStart: "❌ Die Enduhrzeit muss nach der Anfangsuhrzeit liegen.",
     inPast: "❌ Der geplante Zeitpunkt liegt in der Vergangenheit.",
     overlap: "❌ Dieser Zeitraum überschneidet sich mit einem laufenden oder bereits geplanten Sprint.",
     reminder30: "⏰ Erinnerung: Der Sprint startet in 30 Minuten!",
@@ -64,6 +66,7 @@ export const Texts = {
     totalPagesLabel: "Gesamtseitenzahl",
     goalPageLabel: "Seitenziel (optional)",
     alreadyJoined: "❌ Du nimmst bereits an diesem Sprint teil.",
+    alreadyLeft: "❌ Du hast diesen Sprint bereits verlassen und kannst nicht erneut beitreten.",
     myPanelButtonLabel: "Mein Panel",
     notYetJoined: "❌ Du nimmst noch nicht an diesem Sprint teil. Klicke zuerst auf \"Beitreten\".",
     welcome: (bookTitle: string) =>

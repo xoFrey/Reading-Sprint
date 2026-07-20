@@ -1,7 +1,12 @@
-import { ButtonInteraction, PermissionFlagsBits, AttachmentBuilder } from "discord.js";
+import { ButtonInteraction, PermissionFlagsBits, AttachmentBuilder, TextChannel } from "discord.js";
 import { Sprint } from "../database/models/Sprint";
 import { finalizeSprint } from "../services/sprintService";
-import { buildSprintEndImage } from "../services/sprintEndImageService";
+import {
+  buildSprintEndImage,
+  buildResultsPaginationRow,
+  getTotalResultPages,
+} from "../services/sprintEndImageService";
+import { getResultsChannelId } from "../utils/guildConfig";
 import { Texts } from "../config/texts";
 
 export async function execute(interaction: ButtonInteraction): Promise<void> {
@@ -31,17 +36,42 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
+  const totalPages = getTotalResultPages(results.length);
   const imageBuffer = await buildSprintEndImage(
     interaction.client,
     interaction.guildId!,
     results,
-    activeSprint.duration
+    activeSprint.duration,
+    1
   );
   const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
+  const row = buildResultsPaginationRow(activeSprint.id, 1, totalPages);
 
-  const message = await interaction.editReply({ content: Texts.end.ended, files: [attachment] });
+  // Optional in einen separaten Ergebnis-Kanal posten (RESULTS_CHANNEL_ID),
+  // sonst im selben Kanal wie der Sprint. Die Ergebnisse werden NICHT vom
+  // Cleanup-Job gelöscht (siehe database/models/Sprint.ts).
+  const resultsChannelId = getResultsChannelId();
+  const resultsChannel = resultsChannelId
+    ? ((await interaction.client.channels.fetch(resultsChannelId).catch(() => null)) as TextChannel | null)
+    : null;
 
-  // Speichern, damit der Cleanup-Job (jobs/scheduler.ts) diese Nachricht
-  // später löschen kann, sobald der Sprint länger vorbei ist.
-  await Sprint.findByIdAndUpdate(activeSprint.id, { endMessageId: message.id });
+  let resultsMessageId: string;
+  if (resultsChannel) {
+    const sentMessage = await resultsChannel.send({ files: [attachment], components: row ? [row] : [] });
+    resultsMessageId = sentMessage.id;
+    await interaction.editReply({ content: `${Texts.end.ended}\n📊 Ergebnisse: ${resultsChannel}` });
+  } else {
+    const message = await interaction.editReply({
+      content: Texts.end.ended,
+      files: [attachment],
+      components: row ? [row] : [],
+    });
+    resultsMessageId = message.id;
+  }
+
+  await Sprint.findByIdAndUpdate(activeSprint.id, {
+    resultsMessageId,
+    resultsChannelId: resultsChannel?.id ?? activeSprint.channelId,
+    resultsSnapshot: results,
+  });
 }

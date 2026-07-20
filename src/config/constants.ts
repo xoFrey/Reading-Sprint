@@ -20,6 +20,7 @@ export const CustomId = {
   PARTICIPANT_LEAVE: "participant_leave",
 
   SPRINT_GRACE_UPDATE_PAGE: "sprint_grace_update_page",
+  SPRINT_RESULTS_PAGE: "sprint_results_page",
 
   BOOK_EDIT: "book_edit",
   BOOK_DELETE: "book_delete",
@@ -48,17 +49,14 @@ export function buildCustomId(prefix: string, ...args: string[]): string {
 }
 
 // Zerlegt eine customId wieder in Präfix und Zusatzdaten.
-export function parseCustomId(customId: string): {
-  prefix: string;
-  args: string[];
-} {
+export function parseCustomId(customId: string): { prefix: string; args: string[] } {
   const [prefix, ...args] = customId.split(":");
   return { prefix, args };
 }
 
 // Farbpalette und Kulanzzeit-Konfiguration in einem File, da beide "feste,
 // serverweit gültige Werte" sind, die nicht ins XP-System gehören.
-export const GRACE_PERIOD_MINUTES = 5;
+export const GRACE_PERIOD_MINUTES = 10;
 export const MAX_UPCOMING_SPRINTS_SHOWN = 5;
 export const MESSAGE_CLEANUP_DELAY_MINUTES = 20;
 

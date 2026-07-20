@@ -4,6 +4,7 @@ import { Texts } from "../config/texts";
 import { parsePositiveInt } from "../utils/parsing";
 import { Book } from "../database/models/Book";
 import { Sprint } from "../database/models/Sprint";
+import { SprintParticipant } from "../database/models/SprintParticipant";
 import { joinSprint } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
 import { refreshJoinMessage } from "../services/joinMessageService";
@@ -44,7 +45,9 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     );
   } catch (error: any) {
     if (error?.code === 11000) {
-      await interaction.reply({ content: Texts.join.alreadyJoined, ephemeral: true });
+      const existing = await SprintParticipant.findOne({ sprintId, userId: interaction.user.id });
+      const message = existing?.status === "left" ? Texts.join.alreadyLeft : Texts.join.alreadyJoined;
+      await interaction.reply({ content: message, ephemeral: true });
       return;
     }
     throw error;

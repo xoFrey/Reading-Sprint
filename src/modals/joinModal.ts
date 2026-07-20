@@ -6,6 +6,7 @@ import { joinSprint } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
 import { refreshJoinMessage } from "../services/joinMessageService";
 import { Sprint } from "../database/models/Sprint";
+import { SprintParticipant } from "../database/models/SprintParticipant";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
@@ -45,7 +46,9 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     // Doppelter Beitritt (z.B. durch Doppelklick oder abgelaufenes vorheriges
     // Interaction-Token) -> freundliche Meldung statt hartem Crash.
     if (error?.code === 11000) {
-      await interaction.reply({ content: Texts.join.alreadyJoined, ephemeral: true });
+      const existing = await SprintParticipant.findOne({ sprintId, userId: interaction.user.id });
+      const message = existing?.status === "left" ? Texts.join.alreadyLeft : Texts.join.alreadyJoined;
+      await interaction.reply({ content: message, ephemeral: true });
       return;
     }
     throw error;

@@ -6,8 +6,9 @@ import { Texts } from "../config/texts";
 import { GRACE_PERIOD_MINUTES, MESSAGE_CLEANUP_DELAY_MINUTES, CustomId, buildCustomId } from "../config/constants";
 import { startSprint, startGracePeriod, finalizeSprint } from "../services/sprintService";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
-import { buildSprintEndImage } from "../services/sprintEndImageService";
+import { buildSprintEndImage, buildResultsPaginationRow, getTotalResultPages } from "../services/sprintEndImageService";
 import { refreshPanel } from "../services/panelService";
+import { getRoleMention, getResultsChannelId } from "../utils/guildConfig";
 
 const CHECK_INTERVAL_MS = 60_000; // jede Minute prüfen reicht für Erinnerungen auf Minutenbasis
 
@@ -84,10 +85,13 @@ async function checkScheduledStarts(client: Client): Promise<void> {
     const { embed, components } = buildJoinEmbed(sprint.id, scheduled.duration, endTime);
 
     // Wer sich vorab angemeldet hat, wird direkt gepingt, damit die
-    // Anmeldung tatsächlich als Erinnerung dient.
-    const mentions = scheduled.registeredUsers.map((userId) => `<@${userId}>`).join(" ");
+    // Anmeldung tatsächlich als Erinnerung dient. Zusätzlich die
+    // "Lesesprinter"-Rolle, falls konfiguriert.
+    const userMentions = scheduled.registeredUsers.map((userId) => `<@${userId}>`).join(" ");
+    const roleMention = getRoleMention();
+    const content = [roleMention, userMentions].filter(Boolean).join(" ") || undefined;
 
-    const sentMessage = await channel.send({ content: mentions || undefined, embeds: [embed], components });
+    const sentMessage = await channel.send({ content, embeds: [embed], components });
 
     sprint.messageId = sentMessage.id;
     // Erinnerungs-Message-IDs von der ScheduledSprint übernehmen, damit der
@@ -149,32 +153,53 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
   });
 
   for (const sprint of sprintsInGrace) {
-    const channel = await fetchTextChannel(client, sprint.channelId);
+    const sprintChannel = await fetchTextChannel(client, sprint.channelId);
     const results = await finalizeSprint(sprint.id);
 
-    if (!channel) continue;
-
     if (results.length === 0) {
-      await channel.send(Texts.sprintEnd.noParticipants);
+      if (sprintChannel) await sprintChannel.send(Texts.sprintEnd.noParticipants);
       continue;
     }
 
-    const imageBuffer = await buildSprintEndImage(client, sprint.guildId, results, sprint.duration);
+    const totalPages = getTotalResultPages(results.length);
+    const imageBuffer = await buildSprintEndImage(client, sprint.guildId, results, sprint.duration, 1);
     const attachment = new AttachmentBuilder(imageBuffer, { name: "sprint-ende.png" });
-    const sentMessage = await channel.send({ files: [attachment] });
+    const row = buildResultsPaginationRow(sprint.id, 1, totalPages);
+
+    // Optional in einen separaten Ergebnis-Kanal posten (RESULTS_CHANNEL_ID),
+    // sonst im selben Kanal wie der Sprint. Die Ergebnisse werden NICHT vom
+    // Cleanup-Job gelöscht (siehe database/models/Sprint.ts).
+    const resultsChannelId = getResultsChannelId();
+    const resultsChannel = resultsChannelId
+      ? await fetchTextChannel(client, resultsChannelId)
+      : sprintChannel;
+
+    if (!resultsChannel) continue;
+
+    const sentMessage = await resultsChannel.send({
+      files: [attachment],
+      components: row ? [row] : [],
+    });
+
+    if (resultsChannel.id !== sprint.channelId && sprintChannel) {
+      await sprintChannel.send(`📊 Ergebnisse: ${resultsChannel}`).catch(() => undefined);
+    }
 
     // sprint wurde in finalizeSprint() bereits gespeichert (status: "ended");
-    // hier nur die zusätzliche ID nachtragen, kein erneutes vollständiges Save nötig.
-    sprint.endMessageId = sentMessage.id;
+    // hier nur die zusätzlichen Felder nachtragen.
+    sprint.resultsMessageId = sentMessage.id;
+    sprint.resultsChannelId = resultsChannel.id;
+    sprint.resultsSnapshot = results as unknown as unknown[];
     await sprint.save();
   }
 }
 
 /**
- * Löscht ALLE Kanal-Nachrichten eines Sprints (Beitreten-Embed, Erinnerungen,
- * Kulanzzeit-Ankündigung, Abschluss-Bild), sobald er seit mindestens
- * MESSAGE_CLEANUP_DELAY_MINUTES beendet ist. So bleibt der Kanal übersichtlich
- * und zeigt nur noch aktive/geplante Sprints.
+ * Löscht die Kanal-Nachrichten eines Sprints (Beitreten-Embed, Erinnerungen,
+ * Kulanzzeit-Ankündigung), sobald er seit mindestens
+ * MESSAGE_CLEANUP_DELAY_MINUTES beendet ist. Das Ergebnis-Bild (resultsMessageId)
+ * wird BEWUSST NICHT gelöscht - das Abschluss-Leaderboard soll dauerhaft
+ * stehen bleiben.
  */
 async function checkMessageCleanup(client: Client): Promise<void> {
   const cutoff = new Date(Date.now() - MESSAGE_CLEANUP_DELAY_MINUTES * 60_000);
@@ -191,12 +216,7 @@ async function checkMessageCleanup(client: Client): Promise<void> {
     if (channel) {
       // Jeder Löschversuch unabhängig von den anderen - falls eine Nachricht
       // bereits manuell gelöscht wurde, soll das die übrigen nicht verhindern.
-      const messageIds = [
-        sprint.messageId,
-        sprint.graceMessageId,
-        sprint.endMessageId,
-        ...sprint.reminderMessageIds,
-      ];
+      const messageIds = [sprint.messageId, sprint.graceMessageId, ...sprint.reminderMessageIds];
 
       for (const messageId of messageIds) {
         if (!messageId) continue;

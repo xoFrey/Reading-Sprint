@@ -4,6 +4,7 @@ import { parsePositiveInt } from "../utils/parsing";
 import { Sprint } from "../database/models/Sprint";
 import { startSprint } from "../services/sprintService";
 import { hasOverlappingSprint } from "../services/overlapService";
+import { getRoleMention } from "../utils/guildConfig";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
@@ -44,7 +45,11 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const endTime = new Date(sprint.startTime.getTime() + duration * 60_000);
   const { embed, components } = buildJoinEmbed(sprint.id, duration, endTime);
 
-  const message = await interaction.editReply({ embeds: [embed], components });
+  const message = await interaction.editReply({
+    content: getRoleMention() || undefined,
+    embeds: [embed],
+    components,
+  });
 
   // Speichern, damit der Cleanup-Job (jobs/scheduler.ts) diese Nachricht
   // später löschen kann, sobald der Sprint länger vorbei ist.

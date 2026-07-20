@@ -9,8 +9,14 @@ export interface ISprint extends Document {
   channelId: string;
   messageId?: string; // ID des öffentlichen "Beitreten"-Embeds
   graceMessageId?: string; // ID der Kulanzzeit-Ankündigung
-  endMessageId?: string; // ID der Sprint-Abschluss-Bild-Nachricht
   reminderMessageIds: string[]; // von der ScheduledSprint übernommene Erinnerungs-Nachrichten
+
+  // Ergebnis-Nachrichten (paginiert) werden BEWUSST NICHT vom Cleanup-Job
+  // gelöscht (siehe checkMessageCleanup in jobs/scheduler.ts) - das
+  // Abschluss-Leaderboard soll dauerhaft stehen bleiben.
+  resultsMessageId?: string;
+  resultsChannelId?: string; // Kanal, in dem die Ergebnisse gepostet wurden (kann vom Sprint-Kanal abweichen)
+  resultsSnapshot?: unknown[]; // gespeicherte ParticipantResult[] für Pagination nach dem Posten
 
   status: SprintStatus;
 
@@ -32,8 +38,11 @@ const SprintSchema = new Schema<ISprint>(
     channelId: { type: String, required: true },
     messageId: { type: String },
     graceMessageId: { type: String },
-    endMessageId: { type: String },
     reminderMessageIds: { type: [String], default: [] },
+
+    resultsMessageId: { type: String },
+    resultsChannelId: { type: String },
+    resultsSnapshot: { type: Schema.Types.Mixed },
 
     status: {
       type: String,

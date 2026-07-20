@@ -1,29 +1,44 @@
-import { Client } from "discord.js";
+import { Client, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { ParticipantResult } from "./sprintService";
 import { buildCardListImage, CardEntry } from "./cardImageService";
 import { formatMinutes } from "../utils/format";
 import { Texts } from "../config/texts";
+import { CustomId, buildCustomId } from "../config/constants";
+
+export const RESULTS_PAGE_SIZE = 10;
+
+export function getTotalResultPages(resultCount: number): number {
+  return Math.max(1, Math.ceil(resultCount / RESULTS_PAGE_SIZE));
+}
 
 /**
- * Baut das Sprint-Abschluss-Bild über dieselbe Karten-Engine wie das
- * Leaderboard (siehe cardImageService.ts) - bewusst derselbe visuelle Stil,
- * inklusive Avatar-Bildern statt reiner Rangzahlen.
+ * Baut EINE Seite des Sprint-Abschluss-Bilds über dieselbe Karten-Engine wie
+ * das Leaderboard (siehe cardImageService.ts) - bewusst derselbe visuelle
+ * Stil, inklusive Avatar-Bildern statt reiner Rangzahlen.
  *
  * Nimmt den Client statt einer Interaction entgegen, da dieser sowohl vom
- * manuellen Admin-Abbruch (endButton.ts) als auch vom automatischen
- * Scheduler (jobs/scheduler.ts) aufgerufen wird.
+ * manuellen Admin-Abbruch (endButton.ts), dem automatischen Scheduler
+ * (jobs/scheduler.ts) als auch beim Blättern (sprintResultsPageButton.ts)
+ * aufgerufen wird.
+ *
+ * @param results ALLE Ergebnisse (wird intern anhand von `page` geschnitten)
+ * @param page 1-basierter Seitenindex
  */
 export async function buildSprintEndImage(
   client: Client,
   guildId: string,
   results: ParticipantResult[],
   sprintDurationMinutes: number,
+  page = 1
 ): Promise<Buffer> {
+  const totalPages = getTotalResultPages(results.length);
+  const pageResults = results.slice((page - 1) * RESULTS_PAGE_SIZE, page * RESULTS_PAGE_SIZE);
+
   const guild = await client.guilds.fetch(guildId).catch(() => null);
 
   const entries: CardEntry[] = [];
 
-  for (const result of results) {
+  for (const result of pageResults) {
     const member = await guild?.members.fetch(result.userId).catch(() => null);
     const discordUser =
       member?.user ??
@@ -64,8 +79,35 @@ export async function buildSprintEndImage(
     });
   }
 
-  return buildCardListImage(
-    { title: "Sprint beendet!", subtitle: `Geplante Dauer: ${formatMinutes(sprintDurationMinutes)}` },
-    entries
+  const subtitle =
+    totalPages > 1
+      ? `Geplante Dauer: ${formatMinutes(sprintDurationMinutes)} · Seite ${page}/${totalPages}`
+      : `Geplante Dauer: ${formatMinutes(sprintDurationMinutes)}`;
+
+  return buildCardListImage({ title: "Sprint beendet!", subtitle }, entries);
+}
+
+/**
+ * Baut die Zurück/Weiter-Buttons fürs Blättern durch die Ergebnisse.
+ * Gibt null zurück, wenn nur eine Seite existiert (keine Buttons nötig).
+ */
+export function buildResultsPaginationRow(
+  sprintId: string,
+  page: number,
+  totalPages: number
+): ActionRowBuilder<ButtonBuilder> | null {
+  if (totalPages <= 1) return null;
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.SPRINT_RESULTS_PAGE, sprintId, String(page - 1)))
+      .setLabel("◀ Zurück")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page <= 1),
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.SPRINT_RESULTS_PAGE, sprintId, String(page + 1)))
+      .setLabel("Weiter ▶")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page >= totalPages)
   );
 }

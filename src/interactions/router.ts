@@ -13,6 +13,7 @@ import * as panelCancelScheduleButton from "../buttons/panelCancelScheduleButton
 import * as switchBookButton from "../buttons/switchBookButton";
 import * as updatePageButton from "../buttons/updatePageButton";
 import * as graceUpdatePageButton from "../buttons/graceUpdatePageButton";
+import * as sprintResultsPageButton from "../buttons/sprintResultsPageButton";
 import * as myBooksButton from "../buttons/myBooksButton";
 import * as editBookButton from "../buttons/editBookButton";
 import * as deleteBookButton from "../buttons/deleteBookButton";
@@ -55,6 +56,7 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.PARTICIPANT_RESUME]: executeResume,
   [CustomId.PARTICIPANT_LEAVE]: executeLeave,
   [CustomId.SPRINT_GRACE_UPDATE_PAGE]: graceUpdatePageButton.execute,
+  [CustomId.SPRINT_RESULTS_PAGE]: sprintResultsPageButton.execute,
   [CustomId.BOOK_EDIT]: editBookButton.execute,
   [CustomId.BOOK_DELETE]: deleteBookButton.execute,
 };

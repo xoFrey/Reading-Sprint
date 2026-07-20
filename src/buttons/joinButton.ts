@@ -7,6 +7,7 @@ import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from ".
 import { Texts } from "../config/texts";
 import { getUnfinishedBooks } from "../services/bookService";
 import { Sprint } from "../database/models/Sprint";
+import { SprintParticipant } from "../database/models/SprintParticipant";
 
 /**
  * Zeigt zuerst eine Dropdown-Auswahl der unbeendeten Bücher aus der
@@ -30,6 +31,17 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   const sprint = await Sprint.findById(sprintId);
   if (!sprint || sprint.status !== "active") {
     await interaction.editReply({ content: Texts.end.sprintOver });
+    return;
+  }
+
+  // Wer diesen Sprint bereits verlassen hat, darf nicht erneut beitreten.
+  // Wer schon aktiv/pausiert teilnimmt, bekommt stattdessen den Hinweis,
+  // dass er bereits dabei ist.
+  const existingParticipant = await SprintParticipant.findOne({ sprintId, userId: interaction.user.id });
+  if (existingParticipant) {
+    const message =
+      existingParticipant.status === "left" ? Texts.join.alreadyLeft : Texts.join.alreadyJoined;
+    await interaction.editReply({ content: message });
     return;
   }
 

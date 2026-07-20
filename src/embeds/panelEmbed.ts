@@ -7,6 +7,7 @@ import {
 import { Colors, CustomId, buildCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 import { IScheduledSprint } from "../database/models/ScheduledSprint";
+import { formatMinutes } from "../utils/format";
 
 /**
  * Baut das permanente Panel-Embed inkl. der 4 Haupt-Buttons sowie - falls
@@ -31,7 +32,7 @@ export function buildPanelEmbed(
       const unixTimestamp = Math.floor(sprint.scheduledStart.getTime() / 1000);
       const registeredCount = sprint.registeredUsers.length;
       return (
-        `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>) — ${sprint.duration} Minuten` +
+        `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>) — ${formatMinutes(sprint.duration)}` +
         (registeredCount > 0 ? ` · 🔔 ${registeredCount} angemeldet` : "")
       );
     });
