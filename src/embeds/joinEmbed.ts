@@ -58,20 +58,7 @@ export function buildJoinEmbed(
     embed.addFields({ name: fieldName, value: lines.join("\n") });
   }
 
-  const joinRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(buildCustomId(CustomId.SPRINT_JOIN, sprintId))
-      .setLabel("Beitreten")
-      .setEmoji("🙋")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(buildCustomId(CustomId.SPRINT_MY_PANEL, sprintId))
-      .setLabel(Texts.join.myPanelButtonLabel)
-      .setEmoji("📋")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  const components = [joinRow];
+  const components: ActionRowBuilder<ButtonBuilder>[] = [];
 
   if (totalPages > 1) {
     const pageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -88,6 +75,20 @@ export function buildJoinEmbed(
     );
     components.push(pageRow);
   }
+
+  const joinRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.SPRINT_JOIN, sprintId))
+      .setLabel("Beitreten")
+      .setEmoji("🙋")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.SPRINT_MY_PANEL, sprintId))
+      .setLabel(Texts.join.myPanelButtonLabel)
+      .setEmoji("📋")
+      .setStyle(ButtonStyle.Secondary)
+  );
+  components.push(joinRow);
 
   return { embed, components };
 }

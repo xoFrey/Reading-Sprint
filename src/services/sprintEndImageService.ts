@@ -51,9 +51,16 @@ export async function buildSprintEndImage(
       size: 128,
     });
 
-    const bookLines = result.books.map(
-      (book) => `${book.title}: ${book.currentPage - book.startPage} Seiten`,
-    );
+    const bookLines = result.books.map((book) => {
+      const pagesRead = book.currentPage - book.startPage;
+      // Falls ein Ziel gesetzt war, zeigt die Zeile "gelesen/Ziel Seiten"
+      // (z.B. "50/30 Seiten" = 30 Seiten waren das Ziel, 50 wurden gelesen).
+      if (book.goalPage !== undefined) {
+        const goalPagesWanted = book.goalPage - book.startPage;
+        return `${book.title}: ${pagesRead}/${goalPagesWanted} Seiten`;
+      }
+      return `${book.title}: ${pagesRead} Seiten`;
+    });
 
     const xpUntilNext = result.xpForNextLevel - result.currentLevelXP;
     const goalStatus = result.goalReached
