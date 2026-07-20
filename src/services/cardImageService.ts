@@ -1,4 +1,13 @@
 import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
+import { registerCanvasFonts } from "../utils/registerFonts";
+
+registerCanvasFonts();
+
+// Zentrale Font-Familie mit Fallback-Kette: Skia (die Rendering-Engine hinter
+// @napi-rs/canvas) probiert die Familien in Reihenfolge durch, bis eine
+// passende Glyphe gefunden wird - "Noto Color Emoji" deckt Emojis ab,
+// "Noto Sans" normalen Text, die generischen Namen sind der letzte Fallback.
+const FONT_FAMILY = '"Noto Sans", "Noto Color Emoji", "DejaVu Sans", "Liberation Sans", sans-serif';
 
 /**
  * Bereitet Text fürs Canvas-Rendering auf. Discord-Namen können beliebige
@@ -98,7 +107,7 @@ function drawAvatarCircle(ctx: any, x: number, y: number, rank: number, avatarIm
     ctx.fill();
 
     ctx.fillStyle = COLORS.rankBadgeText;
-    ctx.font = "bold 14px sans-serif";
+    ctx.font = `bold 14px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
     ctx.fillText(String(rank), badgeX, badgeY + 5);
     return;
@@ -110,7 +119,7 @@ function drawAvatarCircle(ctx: any, x: number, y: number, rank: number, avatarIm
   ctx.fill();
 
   ctx.fillStyle = COLORS.circleText;
-  ctx.font = "bold 26px sans-serif";
+  ctx.font = `bold 26px ${FONT_FAMILY}`;
   ctx.textAlign = "center";
   ctx.fillText(String(rank), x, y + 9);
 }
@@ -145,12 +154,12 @@ export async function buildCardListImage(
 
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS.title;
-  ctx.font = "bold 46px sans-serif";
+  ctx.font = `bold 46px ${FONT_FAMILY}`;
   ctx.fillText(sanitizeForCanvas(options.title), WIDTH / 2, 68);
 
   if (options.subtitle) {
     ctx.fillStyle = COLORS.subtitle;
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = `bold 22px ${FONT_FAMILY}`;
     ctx.fillText(sanitizeForCanvas(options.subtitle), WIDTH / 2, 104);
   }
 
@@ -170,11 +179,11 @@ export async function buildCardListImage(
     ctx.textAlign = "left";
 
     ctx.fillStyle = COLORS.entryTitle;
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = `bold 22px ${FONT_FAMILY}`;
     ctx.fillText(truncateToWidth(ctx, sanitizeForCanvas(entry.boldLine), maxTextWidth), textX, y + 18);
 
     ctx.fillStyle = COLORS.entryDetail;
-    ctx.font = "18px sans-serif";
+    ctx.font = `18px ${FONT_FAMILY}`;
     entry.detailLines.forEach((line, lineIndex) => {
       ctx.fillText(
         truncateToWidth(ctx, sanitizeForCanvas(line), maxTextWidth),
