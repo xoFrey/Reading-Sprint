@@ -15,7 +15,7 @@ export interface JoinEmbedParticipant {
   paused: boolean;
 }
 
-export const PARTICIPANTS_PAGE_SIZE = 2;
+export const PARTICIPANTS_PAGE_SIZE = 10;
 
 export function getTotalParticipantPages(participantCount: number): number {
   return Math.max(1, Math.ceil(participantCount / PARTICIPANTS_PAGE_SIZE));
@@ -26,14 +26,14 @@ export function buildJoinEmbed(
   durationMinutes: number,
   endTime: Date,
   participants: JoinEmbedParticipant[] = [],
-  page = 1,
+  page = 1
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
   const endUnix = Math.floor(endTime.getTime() / 1000);
   const totalPages = getTotalParticipantPages(participants.length);
   const safePage = Math.min(Math.max(page, 1), totalPages);
   const pageParticipants = participants.slice(
     (safePage - 1) * PARTICIPANTS_PAGE_SIZE,
-    safePage * PARTICIPANTS_PAGE_SIZE,
+    safePage * PARTICIPANTS_PAGE_SIZE
   );
 
   const embed = new EmbedBuilder()
@@ -48,8 +48,7 @@ export function buildJoinEmbed(
 
   if (participants.length > 0) {
     const lines = pageParticipants.map(
-      (p) =>
-        `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle} (ab Seite ${p.startPage})`,
+      (p) => `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle} (ab Seite ${p.startPage})`
     );
     const fieldName =
       totalPages > 1
@@ -68,7 +67,7 @@ export function buildJoinEmbed(
       .setCustomId(buildCustomId(CustomId.SPRINT_MY_PANEL, sprintId))
       .setLabel(Texts.join.myPanelButtonLabel)
       .setEmoji("📋")
-      .setStyle(ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary)
   );
 
   const components = [joinRow];
@@ -76,27 +75,15 @@ export function buildJoinEmbed(
   if (totalPages > 1) {
     const pageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(
-          buildCustomId(
-            CustomId.JOIN_PARTICIPANTS_PAGE,
-            sprintId,
-            String(safePage - 1),
-          ),
-        )
+        .setCustomId(buildCustomId(CustomId.JOIN_PARTICIPANTS_PAGE, sprintId, String(safePage - 1)))
         .setLabel("◀ Zurück")
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(safePage <= 1),
       new ButtonBuilder()
-        .setCustomId(
-          buildCustomId(
-            CustomId.JOIN_PARTICIPANTS_PAGE,
-            sprintId,
-            String(safePage + 1),
-          ),
-        )
+        .setCustomId(buildCustomId(CustomId.JOIN_PARTICIPANTS_PAGE, sprintId, String(safePage + 1)))
         .setLabel("Weiter ▶")
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(safePage >= totalPages),
+        .setDisabled(safePage >= totalPages)
     );
     components.push(pageRow);
   }

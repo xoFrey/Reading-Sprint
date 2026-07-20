@@ -9,14 +9,14 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     .setCustomId("modal_start") // eigenes, einfaches Modal - nur ein Feld
     .setTitle(Texts.start.modalTitle);
 
-  const durationInput = new TextInputBuilder()
-    .setCustomId("duration")
-    .setLabel(Texts.start.durationLabel)
-    .setPlaceholder("z.B. 30")
+  const endTimeInput = new TextInputBuilder()
+    .setCustomId("endTime")
+    .setLabel(Texts.start.endTimeLabel)
+    .setPlaceholder("z.B. 21:30")
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
-  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(durationInput));
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(endTimeInput));
 
   await interaction.showModal(modal);
 }

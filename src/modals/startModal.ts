@@ -1,6 +1,6 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { Texts } from "../config/texts";
-import { parsePositiveInt } from "../utils/parsing";
+import { parseTimeRelativeToNow } from "../utils/parsing";
 import { Sprint } from "../database/models/Sprint";
 import { startSprint } from "../services/sprintService";
 import { hasOverlappingSprint } from "../services/overlapService";
@@ -8,13 +8,18 @@ import { getRoleMention } from "../utils/guildConfig";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
-  const durationStr = interaction.fields.getTextInputValue("duration");
-  const duration = parsePositiveInt(durationStr);
+  const endTimeStr = interaction.fields.getTextInputValue("endTime");
+  const endTime = parseTimeRelativeToNow(endTimeStr);
 
-  if (!duration) {
+  if (!endTime) {
     await interaction.reply({ content: Texts.schedule.invalidDate, ephemeral: true });
     return;
   }
+
+  // Dauer wird aus "jetzt bis Enduhrzeit" berechnet (parseTimeRelativeToNow
+  // nimmt automatisch den nächsten Tag an, falls die Uhrzeit heute schon
+  // vorbei wäre - unterstützt so auch Sprints über Mitternacht).
+  const duration = Math.round((endTime.getTime() - Date.now()) / 60_000);
 
   // Sofort bestätigen (innerhalb der 3-Sekunden-Frist), erst danach die
   // eigentlichen (potenziell langsameren) DB-Aufrufe ausführen.
@@ -42,8 +47,8 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     duration
   );
 
-  const endTime = new Date(sprint.startTime.getTime() + duration * 60_000);
-  const { embed, components } = buildJoinEmbed(sprint.id, duration, endTime);
+  const sprintEndTime = new Date(sprint.startTime.getTime() + duration * 60_000);
+  const { embed, components } = buildJoinEmbed(sprint.id, duration, sprintEndTime);
 
   const message = await interaction.editReply({
     content: getRoleMention() || undefined,

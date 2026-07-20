@@ -20,8 +20,33 @@ export function parseGermanDateTime(dateStr: string, timeStr: string): Date | nu
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-// Parst eine positive Ganzzahl (>0) aus einem Modal-Textfeld, z.B. für
-// Gesamtseitenzahl oder Dauer - dort ergibt 0 keinen Sinn.
+// Parst eine Uhrzeit (HH:MM) relativ zu JETZT: liegt die Zeit heute noch in
+// der Zukunft, wird der heutige Tag verwendet - liegt sie schon in der
+// Vergangenheit (z.B. Start um 23:50, Ende "00:30"), wird automatisch der
+// nächste Tag angenommen (unterstützt Sprints über Mitternacht).
+export function parseTimeRelativeToNow(timeStr: string): Date | null {
+  const timeMatch = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) return null;
+
+  const [, hour, minute] = timeMatch;
+  const now = new Date();
+
+  const result = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    Number(hour),
+    Number(minute)
+  );
+
+  if (Number.isNaN(result.getTime())) return null;
+
+  if (result.getTime() <= now.getTime()) {
+    result.setDate(result.getDate() + 1);
+  }
+
+  return result;
+}
 export function parsePositiveInt(value: string): number | null {
   const parsed = Number.parseInt(value.trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
