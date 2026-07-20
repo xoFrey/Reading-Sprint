@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { Colors, CustomId, buildCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
+import { formatMinutes } from "../utils/format";
 
 // Ein Eintrag für die Teilnehmerliste im öffentlichen Sprint-Embed.
 export interface JoinEmbedParticipant {
@@ -39,11 +40,11 @@ export function buildJoinEmbed(
   const embed = new EmbedBuilder()
     .setColor(Colors.success)
     .setTitle("🏁 Lese-Sprint gestartet!")
-    .setDescription(Texts.start.announcement(durationMinutes))
+    .setDescription(Texts.start.announcement(formatMinutes(durationMinutes)))
     .addFields({
       name: "Ende",
       // Absolute Uhrzeit UND relative Angabe nebeneinander.
-      value: `<t:${endUnix}:t> Uhr (<t:${endUnix}:R>) · Dauer: ${durationMinutes} Min`,
+      value: `<t:${endUnix}:t> Uhr (<t:${endUnix}:R>) · Dauer: ${formatMinutes(durationMinutes)}`,
     });
 
   if (participants.length > 0) {

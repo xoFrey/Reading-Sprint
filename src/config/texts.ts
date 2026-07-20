@@ -27,8 +27,8 @@ export const Texts = {
     modalTitle: "Sprint sofort starten",
     endTimeLabel: "Enduhrzeit (HH:MM)",
     alreadyActive: "❌ Es läuft bereits ein aktiver Sprint in diesem Server.",
-    announcement: (minutes: number) =>
-      `🏁 Ein neuer Lese-Sprint hat begonnen! Dauer: **${minutes} Minuten**.`,
+    announcement: (duration: string) =>
+      `🏁 Ein neuer Lese-Sprint hat begonnen! Dauer: **${duration}**.`,
   },
 
   end: {
