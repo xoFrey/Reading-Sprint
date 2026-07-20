@@ -1,5 +1,28 @@
 import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
 
+/**
+ * Bereitet Text fürs Canvas-Rendering auf. Discord-Namen können beliebige
+ * Unicode-Zeichen enthalten (z.B. "𝒙𝒆𝒏𝒊𝒂" = mathematische Stil-Buchstaben,
+ * kein echtes "x"/"e"/"n"...) - dafür gibt es keine realistische
+ * Font-Lösung, da praktisch jedes Unicode-Schriftsystem der Welt abgedeckt
+ * werden müsste. Stattdessen:
+ * 1. NFKD-Normalisierung löst Kompatibilitätszeichen (Stil-Buchstaben,
+ *    Ligaturen, Vollbreite-Formen etc.) automatisch in normale Buchstaben auf.
+ * 2. Freistehende Kombinationszeichen (Akzente ohne Basisbuchstabe) werden entfernt.
+ * 3. Alles außerhalb eines sinnvollen "darstellbaren" Bereichs (Standard-
+ *    Buchstaben/Zahlen/Satzzeichen + gängige Emoji-Blöcke) wird entfernt,
+ *    statt als kaputtes Kästchen ("Tofu") angezeigt zu werden.
+ */
+function sanitizeForCanvas(text: string): string {
+  let result = text.normalize("NFKD");
+  result = result.replace(/[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]/g, "");
+  result = result.replace(
+    /[^\x20-\x7E\u00A0-\u024F\u1E00-\u1EFF\u2010-\u2027\u2030-\u205E\u2600-\u27BF\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u200D\uFE0F]/gu,
+    ""
+  );
+  return result.trim();
+}
+
 // Ein Eintrag in der Karten-Liste (ein Nutzer/eine Platzierung).
 export interface CardEntry {
   rank: number;
@@ -123,12 +146,12 @@ export async function buildCardListImage(
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS.title;
   ctx.font = "bold 46px sans-serif";
-  ctx.fillText(options.title, WIDTH / 2, 68);
+  ctx.fillText(sanitizeForCanvas(options.title), WIDTH / 2, 68);
 
   if (options.subtitle) {
     ctx.fillStyle = COLORS.subtitle;
     ctx.font = "bold 22px sans-serif";
-    ctx.fillText(options.subtitle, WIDTH / 2, 104);
+    ctx.fillText(sanitizeForCanvas(options.subtitle), WIDTH / 2, 104);
   }
 
   const avatarImages = await Promise.all(entries.map((entry) => tryLoadImage(entry.avatarUrl)));
@@ -148,12 +171,16 @@ export async function buildCardListImage(
 
     ctx.fillStyle = COLORS.entryTitle;
     ctx.font = "bold 22px sans-serif";
-    ctx.fillText(truncateToWidth(ctx, entry.boldLine, maxTextWidth), textX, y + 18);
+    ctx.fillText(truncateToWidth(ctx, sanitizeForCanvas(entry.boldLine), maxTextWidth), textX, y + 18);
 
     ctx.fillStyle = COLORS.entryDetail;
     ctx.font = "18px sans-serif";
     entry.detailLines.forEach((line, lineIndex) => {
-      ctx.fillText(truncateToWidth(ctx, line, maxTextWidth), textX, y + 18 + LINE_HEIGHT * (lineIndex + 1));
+      ctx.fillText(
+        truncateToWidth(ctx, sanitizeForCanvas(line), maxTextWidth),
+        textX,
+        y + 18 + LINE_HEIGHT * (lineIndex + 1)
+      );
     });
 
     y += entryHeight + ENTRY_GAP;
