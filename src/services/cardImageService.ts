@@ -82,6 +82,38 @@ function truncateToWidth(ctx: any, text: string, maxWidth: number): string {
   return `${truncated}…`;
 }
 
+/**
+ * Bricht Text nach Wörtern um (statt mittendrin abzuschneiden), damit z.B.
+ * bei langen Buchtiteln die nachfolgende Seitenzahl nicht verloren geht.
+ * Bricht auf maximal `maxLines` Zeilen um; falls der Text danach immer noch
+ * nicht passt, wird die letzte Zeile mit "…" gekürzt.
+ */
+function wrapTextToLines(ctx: any, text: string, maxWidth: number, maxLines: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    // "|| !current" stellt sicher, dass auch ein einzelnes, zu langes Wort
+    // nicht zu einer Endlosschleife/leeren Zeile führt.
+    if (ctx.measureText(candidate).width <= maxWidth || !current) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+
+  if (lines.length <= maxLines) return lines;
+
+  const kept = lines.slice(0, maxLines - 1);
+  const remainder = lines.slice(maxLines - 1).join(" ");
+  kept.push(truncateToWidth(ctx, remainder, maxWidth));
+  return kept;
+}
+
 async function tryLoadImage(url: string | undefined): Promise<Image | null> {
   if (!url) return null;
   try {
@@ -131,35 +163,39 @@ function drawAvatarCircle(ctx: any, x: number, y: number, rank: number, avatarIm
   ctx.fillText(String(rank), x, y + 9);
 }
 
+// Interner Typ: Ein Eintrag, dessen Text bereits fertig umgebrochen/gekürzt
+// wurde und daher 1:1 gezeichnet werden kann, ohne erneute Breitenprüfung.
+interface PreparedEntry {
+  rank: number;
+  avatarUrl?: string;
+  boldLine: string;
+  detailLines: string[];
+}
+
 // Höhe, die ein einzelner Eintrag für seinen Text braucht (Kopfzeile + Detail-Zeilen).
-function estimateEntryHeight(entry: CardEntry): number {
+function estimateEntryHeight(entry: PreparedEntry): number {
   const textHeight = (entry.detailLines.length + 1) * LINE_HEIGHT + 10;
   return Math.max(textHeight, CIRCLE_RADIUS * 2 + 10);
 }
 
-function drawEntry(ctx: any, entry: CardEntry, columnX: number, y: number, avatarImage: Image | null): void {
+function drawEntry(ctx: any, entry: PreparedEntry, columnX: number, y: number, avatarImage: Image | null): void {
   const circleX = columnX + CIRCLE_RADIUS;
   const circleY = y + CIRCLE_RADIUS + 2;
 
   drawAvatarCircle(ctx, circleX, circleY, entry.rank, avatarImage);
 
   const textX = columnX + CIRCLE_RADIUS * 2 + 24;
-  const maxTextWidth = COLUMN_WIDTH - CIRCLE_RADIUS * 2 - 24;
 
   ctx.textAlign = "left";
 
   ctx.fillStyle = COLORS.entryTitle;
   ctx.font = `bold 22px ${FONT_FAMILY}`;
-  ctx.fillText(truncateToWidth(ctx, sanitizeForCanvas(entry.boldLine), maxTextWidth), textX, y + 18);
+  ctx.fillText(entry.boldLine, textX, y + 18);
 
   ctx.fillStyle = COLORS.entryDetail;
   ctx.font = `18px ${FONT_FAMILY}`;
   entry.detailLines.forEach((line, lineIndex) => {
-    ctx.fillText(
-      truncateToWidth(ctx, sanitizeForCanvas(line), maxTextWidth),
-      textX,
-      y + 18 + LINE_HEIGHT * (lineIndex + 1)
-    );
+    ctx.fillText(line, textX, y + 18 + LINE_HEIGHT * (lineIndex + 1));
   });
 }
 
@@ -175,13 +211,33 @@ export async function buildCardListImage(
   entries: CardEntry[]
 ): Promise<Buffer> {
   const headerHeight = options.subtitle ? HEADER_HEIGHT_WITH_SUBTITLE : HEADER_HEIGHT_NO_SUBTITLE;
+  const maxTextWidth = COLUMN_WIDTH - CIRCLE_RADIUS * 2 - 24;
+
+  // Erster Durchlauf: nur zum Messen von Textbreiten (für den Zeilenumbruch).
+  // Braucht eine echte Canvas-Instanz, da Schriftmetriken vom geladenen Font
+  // abhängen - die eigentliche Zeichenfläche kennen wir aber erst, sobald wir
+  // wissen, wie hoch die umgebrochenen Texte werden (daher zwei Durchläufe).
+  const measureCanvas = createCanvas(10, 10);
+  const measureCtx = measureCanvas.getContext("2d");
+
+  const preparedEntries: PreparedEntry[] = entries.map((entry) => {
+    measureCtx.font = `bold 22px ${FONT_FAMILY}`;
+    const boldLine = truncateToWidth(measureCtx, sanitizeForCanvas(entry.boldLine), maxTextWidth);
+
+    measureCtx.font = `18px ${FONT_FAMILY}`;
+    const detailLines = entry.detailLines.flatMap((line) =>
+      wrapTextToLines(measureCtx, sanitizeForCanvas(line), maxTextWidth, 2)
+    );
+
+    return { rank: entry.rank, avatarUrl: entry.avatarUrl, boldLine, detailLines };
+  });
 
   // Einträge in Zeilen zu je COLUMNS (2) gruppieren; die Zeilenhöhe richtet
   // sich nach dem "höheren" der beiden Einträge in dieser Zeile, damit beide
   // Spalten sauber ausgerichtet bleiben.
-  const rows: CardEntry[][] = [];
-  for (let i = 0; i < entries.length; i += COLUMNS) {
-    rows.push(entries.slice(i, i + COLUMNS));
+  const rows: PreparedEntry[][] = [];
+  for (let i = 0; i < preparedEntries.length; i += COLUMNS) {
+    rows.push(preparedEntries.slice(i, i + COLUMNS));
   }
   const rowHeights = rows.map((row) => Math.max(...row.map(estimateEntryHeight)));
   const bodyHeight = rowHeights.reduce((sum, h) => sum + h + ROW_GAP, 0);
