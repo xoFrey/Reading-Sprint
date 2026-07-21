@@ -6,6 +6,7 @@ import * as scheduleButton from "../buttons/scheduleButton";
 import * as startButton from "../buttons/startButton";
 import * as endButton from "../buttons/endButton";
 import * as leaderboardButton from "../buttons/leaderboardButton";
+import * as leaderboardPageButton from "../buttons/leaderboardPageButton";
 import * as joinButton from "../buttons/joinButton";
 import * as myPanelButton from "../buttons/myPanelButton";
 import * as scheduleRegisterButton from "../buttons/scheduleRegisterButton";
@@ -46,6 +47,7 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.PANEL_START]: startButton.execute,
   [CustomId.PANEL_END]: endButton.execute,
   [CustomId.PANEL_LEADERBOARD]: leaderboardButton.execute,
+  [CustomId.LEADERBOARD_PAGE]: leaderboardPageButton.execute,
   [CustomId.PANEL_MY_BOOKS]: myBooksButton.execute,
   [CustomId.PANEL_CANCEL_SCHEDULE]: panelCancelScheduleButton.execute,
   [CustomId.SPRINT_JOIN]: joinButton.execute,
