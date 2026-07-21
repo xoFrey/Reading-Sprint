@@ -67,13 +67,20 @@ export async function buildSprintEndImage(
       ? Texts.sprintEnd.goalReached
       : Texts.sprintEnd.goalMissed;
 
-    const detailLines: string[] = [
-      ...bookLines,
+    const detailLines: string[] = [...bookLines];
+
+    // Gesamt-Seitenzahl nur als eigene Zeile, wenn mehrere Bücher gelesen
+    // wurden - bei nur einem Buch wäre das eine reine Wiederholung der Zeile oben.
+    if (result.books.length > 1) {
+      detailLines.push(`Gesamt: ${result.totalPagesRead} Seiten`);
+    }
+
+    detailLines.push(
       `${formatMinutes(result.minutesInSprint)}`,
       `+${result.xpEarned} XP`,
       `${xpUntilNext} XP bis Level ${result.newLevel + 1}`,
-      goalStatus,
-    ];
+      goalStatus
+    );
     if (result.leveledUp)
       detailLines.push(Texts.sprintEnd.levelUp(result.newLevel));
     if (result.leftEarly) detailLines.push(Texts.sprintEnd.leftEarly);

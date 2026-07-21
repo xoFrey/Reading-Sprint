@@ -45,12 +45,19 @@ export interface CardImageOptions {
   subtitle?: string;
 }
 
-const WIDTH = 576;
+// 2-Spalten-Raster: pro "Zeile" im Bild stehen 2 Einträge nebeneinander.
+// Das Bild ist deutlich breiter als vorher, damit auch lange Buchtitel
+// nicht sofort abgeschnitten werden müssen.
+const COLUMNS = 2;
+const WIDTH = 1040;
+const COLUMN_GAP = 40;
+const PADDING_X = 48;
+const COLUMN_WIDTH = (WIDTH - PADDING_X * 2 - COLUMN_GAP) / COLUMNS;
+
 const HEADER_HEIGHT_WITH_SUBTITLE = 175;
 const HEADER_HEIGHT_NO_SUBTITLE = 130;
 const LINE_HEIGHT = 24;
-const ENTRY_GAP = 22;
-const PADDING_X = 48;
+const ROW_GAP = 26;
 const CIRCLE_RADIUS = 34;
 
 const COLORS = {
@@ -124,26 +131,60 @@ function drawAvatarCircle(ctx: any, x: number, y: number, rank: number, avatarIm
   ctx.fillText(String(rank), x, y + 9);
 }
 
-// Höhe eines Eintrags richtet sich nach der Anzahl seiner Detail-Zeilen
-// (z.B. mehr Zeilen bei mehreren Büchern in einem Sprint).
+// Höhe, die ein einzelner Eintrag für seinen Text braucht (Kopfzeile + Detail-Zeilen).
 function estimateEntryHeight(entry: CardEntry): number {
   const textHeight = (entry.detailLines.length + 1) * LINE_HEIGHT + 10;
   return Math.max(textHeight, CIRCLE_RADIUS * 2 + 10);
 }
 
+function drawEntry(ctx: any, entry: CardEntry, columnX: number, y: number, avatarImage: Image | null): void {
+  const circleX = columnX + CIRCLE_RADIUS;
+  const circleY = y + CIRCLE_RADIUS + 2;
+
+  drawAvatarCircle(ctx, circleX, circleY, entry.rank, avatarImage);
+
+  const textX = columnX + CIRCLE_RADIUS * 2 + 24;
+  const maxTextWidth = COLUMN_WIDTH - CIRCLE_RADIUS * 2 - 24;
+
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = COLORS.entryTitle;
+  ctx.font = `bold 22px ${FONT_FAMILY}`;
+  ctx.fillText(truncateToWidth(ctx, sanitizeForCanvas(entry.boldLine), maxTextWidth), textX, y + 18);
+
+  ctx.fillStyle = COLORS.entryDetail;
+  ctx.font = `18px ${FONT_FAMILY}`;
+  entry.detailLines.forEach((line, lineIndex) => {
+    ctx.fillText(
+      truncateToWidth(ctx, sanitizeForCanvas(line), maxTextWidth),
+      textX,
+      y + 18 + LINE_HEIGHT * (lineIndex + 1)
+    );
+  });
+}
+
 /**
- * Baut eine Liste im "Leaderboard-Stil": Titel, optionaler Untertitel,
- * darunter pro Eintrag ein Avatar-Kreis mit Rang-Badge, eine fette Kopfzeile
- * und beliebig viele Detail-Zeilen. Wird sowohl vom Leaderboard als auch vom
- * Sprint-Abschluss verwendet, damit beide optisch identisch aussehen.
+ * Baut eine Liste im "Leaderboard-Stil" als 2-Spalten-Raster: Titel,
+ * optionaler Untertitel, darunter Einträge zu je 2 nebeneinander (Avatar-
+ * Kreis mit Rang-Badge, fette Kopfzeile, beliebig viele Detail-Zeilen).
+ * Wird sowohl vom Leaderboard als auch vom Sprint-Abschluss verwendet,
+ * damit beide optisch identisch aussehen.
  */
 export async function buildCardListImage(
   options: CardImageOptions,
   entries: CardEntry[]
 ): Promise<Buffer> {
   const headerHeight = options.subtitle ? HEADER_HEIGHT_WITH_SUBTITLE : HEADER_HEIGHT_NO_SUBTITLE;
-  const entryHeights = entries.map(estimateEntryHeight);
-  const bodyHeight = entryHeights.reduce((sum, h) => sum + h + ENTRY_GAP, 0);
+
+  // Einträge in Zeilen zu je COLUMNS (2) gruppieren; die Zeilenhöhe richtet
+  // sich nach dem "höheren" der beiden Einträge in dieser Zeile, damit beide
+  // Spalten sauber ausgerichtet bleiben.
+  const rows: CardEntry[][] = [];
+  for (let i = 0; i < entries.length; i += COLUMNS) {
+    rows.push(entries.slice(i, i + COLUMNS));
+  }
+  const rowHeights = rows.map((row) => Math.max(...row.map(estimateEntryHeight)));
+  const bodyHeight = rowHeights.reduce((sum, h) => sum + h + ROW_GAP, 0);
   const height = headerHeight + bodyHeight + 20;
 
   const canvas = createCanvas(WIDTH, height);
@@ -166,33 +207,17 @@ export async function buildCardListImage(
   const avatarImages = await Promise.all(entries.map((entry) => tryLoadImage(entry.avatarUrl)));
 
   let y = headerHeight;
-  const textX = PADDING_X + CIRCLE_RADIUS * 2 + 24;
-  const maxTextWidth = WIDTH - textX - PADDING_X;
 
-  entries.forEach((entry, index) => {
-    const entryHeight = entryHeights[index];
-    const circleX = PADDING_X + CIRCLE_RADIUS;
-    const circleY = y + CIRCLE_RADIUS + 2;
+  rows.forEach((row, rowIndex) => {
+    const rowHeight = rowHeights[rowIndex];
 
-    drawAvatarCircle(ctx, circleX, circleY, entry.rank, avatarImages[index]);
-
-    ctx.textAlign = "left";
-
-    ctx.fillStyle = COLORS.entryTitle;
-    ctx.font = `bold 22px ${FONT_FAMILY}`;
-    ctx.fillText(truncateToWidth(ctx, sanitizeForCanvas(entry.boldLine), maxTextWidth), textX, y + 18);
-
-    ctx.fillStyle = COLORS.entryDetail;
-    ctx.font = `18px ${FONT_FAMILY}`;
-    entry.detailLines.forEach((line, lineIndex) => {
-      ctx.fillText(
-        truncateToWidth(ctx, sanitizeForCanvas(line), maxTextWidth),
-        textX,
-        y + 18 + LINE_HEIGHT * (lineIndex + 1)
-      );
+    row.forEach((entry, columnIndex) => {
+      const columnX = PADDING_X + columnIndex * (COLUMN_WIDTH + COLUMN_GAP);
+      const entryIndex = rowIndex * COLUMNS + columnIndex;
+      drawEntry(ctx, entry, columnX, y, avatarImages[entryIndex]);
     });
 
-    y += entryHeight + ENTRY_GAP;
+    y += rowHeight + ROW_GAP;
   });
 
   return canvas.toBuffer("image/png");
