@@ -12,7 +12,7 @@ import { formatMinutes } from "../utils/format";
 export interface JoinEmbedParticipant {
   userId: string;
   bookTitle: string;
-  startPage: number;
+  progressLabel: string; // format-abhängig, z.B. "ab Seite 46" / "ab 20%" / "ab 1:30 Std"
   paused: boolean;
 }
 
@@ -49,7 +49,7 @@ export function buildJoinEmbed(
 
   if (participants.length > 0) {
     const lines = pageParticipants.map(
-      (p) => `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle} (ab Seite ${p.startPage})`
+      (p) => `${p.paused ? "⏸️" : "📖"} <@${p.userId}> — ${p.bookTitle} (${p.progressLabel})`
     );
     const fieldName =
       totalPages > 1

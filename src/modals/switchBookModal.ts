@@ -1,40 +1,17 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parsePositiveInt, parseNonNegativeInt } from "../utils/parsing";
+import { BookFormat } from "../types";
+import { parseFormatValue, parseFormatValuePositive } from "../services/bookProgress";
 import { SprintParticipant } from "../database/models/SprintParticipant";
-import { getCurrentBook, updateCurrentPage, switchBook } from "../services/sprintService";
+import { getCurrentBook, updateBookProgress, switchBook, NewBookInput } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
 import { refreshJoinMessage } from "../services/joinMessageService";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
-  const [participantId] = args;
-
-  const oldCurrentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("oldCurrentPage"));
-  const title = interaction.fields.getTextInputValue("title").trim();
-  const currentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
-  const totalPages = parsePositiveInt(interaction.fields.getTextInputValue("totalPages"));
-  const goalPagesRaw = interaction.fields.getTextInputValue("goalPage");
-  const goalPagesToRead = goalPagesRaw ? parsePositiveInt(goalPagesRaw) : null;
-
-  if (
-    currentPage === null ||
-    totalPages === null ||
-    (goalPagesRaw && goalPagesToRead === null)
-  ) {
-    await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
-    return;
-  }
-
-  if (currentPage > totalPages) {
-    await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
-    return;
-  }
-
-  // Nutzer geben ein, WIE VIELE Seiten sie lesen wollen (nicht die absolute
-  // Zielseite) - bezogen auf die Startseite des NEUEN Buchs.
-  const goalPage = goalPagesToRead ? currentPage + goalPagesToRead : undefined;
+  const [participantId, formatRaw] = args;
+  const format = formatRaw as BookFormat;
 
   const participant = await SprintParticipant.findById(participantId);
   if (!participant) {
@@ -42,29 +19,74 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
-  // Erst die Seite im BISHERIGEN Buch speichern (gleiche Validierung wie beim
-  // regulären "Seite aktualisieren" - kein Rückschritt, keine Seite jenseits
-  // der Gesamtseitenzahl), bevor überhaupt das neue Buch angelegt wird.
   const oldBook = getCurrentBook(participant);
+  const oldCurrent = oldBook
+    ? parseFormatValue(oldBook.format, interaction.fields.getTextInputValue("oldCurrent"))
+    : null;
+
+  const title = interaction.fields.getTextInputValue("title").trim();
+  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"));
+  const total = parseFormatValuePositive(format, interaction.fields.getTextInputValue("total"));
+  const goalRaw = interaction.fields.getTextInputValue("goal");
+  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw) : null;
+
+  if (current === null || total === null || (goalRaw && goalDelta === null)) {
+    await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
+    return;
+  }
+
+  if (format === "ebook" && (current < 0 || current > 100)) {
+    await interaction.reply({ content: Texts.join.invalidPercent, ephemeral: true });
+    return;
+  }
+
+  if (current > total) {
+    await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
+    return;
+  }
+
+  // Erst den Fortschritt im BISHERIGEN Buch speichern (gleiche Validierung
+  // wie beim regulären "Fortschritt aktualisieren"), bevor überhaupt das
+  // neue Buch angelegt wird.
+  const oldTotal = oldBook
+    ? oldBook.format === "audiobook"
+      ? oldBook.totalMinutes
+      : oldBook.totalPages
+    : undefined;
+  const oldStart = oldBook
+    ? oldBook.format === "audiobook"
+      ? oldBook.startMinutes
+      : oldBook.format === "ebook"
+        ? oldBook.startPercent
+        : oldBook.startPage
+    : undefined;
+
   if (
-    oldCurrentPage === null ||
+    oldCurrent === null ||
     !oldBook ||
-    oldCurrentPage < oldBook.startPage ||
-    oldCurrentPage > oldBook.totalPages
+    oldStart === undefined ||
+    oldTotal === undefined ||
+    oldCurrent < oldStart ||
+    oldCurrent > oldTotal
   ) {
     await interaction.reply({ content: Texts.participant.updatePageInvalid, ephemeral: true });
     return;
   }
-  await updateCurrentPage(participant, oldCurrentPage);
+  await updateBookProgress(participant, oldCurrent);
+
+  const input: NewBookInput = {
+    title,
+    format,
+    current,
+    total,
+    goalDelta: goalDelta ?? undefined,
+  };
 
   const updatedParticipant = await switchBook(
     participantId,
     interaction.user.id,
     interaction.guildId!,
-    title,
-    currentPage,
-    totalPages,
-    goalPage
+    input
   );
 
   if (!updatedParticipant) {

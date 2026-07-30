@@ -1,10 +1,10 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseNonNegativeInt, parsePositiveInt } from "../utils/parsing";
+import { parseFormatValue, parseFormatValuePositive } from "../services/bookProgress";
 import { Book } from "../database/models/Book";
 import { SprintParticipant } from "../database/models/SprintParticipant";
-import { getCurrentBook, updateCurrentPage, switchBook } from "../services/sprintService";
+import { getCurrentBook, updateBookProgress, switchBook, NewBookInput } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
 import { refreshJoinMessage } from "../services/joinMessageService";
 
@@ -12,54 +12,72 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const { args } = parseCustomId(interaction.customId);
   const [participantId, bookId] = args;
 
-  const oldCurrentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("oldCurrentPage"));
-  const currentPage = parseNonNegativeInt(interaction.fields.getTextInputValue("currentPage"));
-  const goalPagesRaw = interaction.fields.getTextInputValue("goalPage");
-  const goalPagesToRead = goalPagesRaw ? parsePositiveInt(goalPagesRaw) : null;
-
   const book = await Book.findById(bookId);
   const participant = await SprintParticipant.findById(participantId);
+  const oldBook = participant ? getCurrentBook(participant) : undefined;
 
-  if (
-    !book ||
-    !participant ||
-    currentPage === null ||
-    (goalPagesRaw && goalPagesToRead === null)
-  ) {
+  if (!book || !participant || !oldBook) {
     await interaction.reply({ content: Texts.errors.generic, ephemeral: true });
     return;
   }
 
-  if (currentPage > book.totalPages) {
+  const format = book.format;
+  const total = format === "audiobook" ? book.totalMinutes! : book.totalPages!;
+
+  const oldCurrent = parseFormatValue(oldBook.format, interaction.fields.getTextInputValue("oldCurrent"));
+  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"));
+  const goalRaw = interaction.fields.getTextInputValue("goal");
+  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw) : null;
+
+  if (current === null || (goalRaw && goalDelta === null)) {
+    await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
+    return;
+  }
+
+  if (format === "ebook" && (current < 0 || current > 100)) {
+    await interaction.reply({ content: Texts.join.invalidPercent, ephemeral: true });
+    return;
+  }
+
+  if (current > total) {
     await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
     return;
   }
 
-  // Nutzer geben ein, WIE VIELE Seiten sie lesen wollen (nicht die absolute
-  // Zielseite) - bezogen auf die Startseite des NEUEN Buchs.
-  const goalPage = goalPagesToRead ? currentPage + goalPagesToRead : undefined;
+  // Erst den Fortschritt im BISHERIGEN Buch speichern (gleiche Validierung wie überall).
+  const oldTotal = oldBook.format === "audiobook" ? oldBook.totalMinutes : oldBook.totalPages;
+  const oldStart =
+    oldBook.format === "audiobook"
+      ? oldBook.startMinutes
+      : oldBook.format === "ebook"
+        ? oldBook.startPercent
+        : oldBook.startPage;
 
-  // Erst die Seite im BISHERIGEN Buch speichern (gleiche Validierung wie überall).
-  const oldBook = getCurrentBook(participant);
   if (
-    oldCurrentPage === null ||
-    !oldBook ||
-    oldCurrentPage < oldBook.startPage ||
-    oldCurrentPage > oldBook.totalPages
+    oldCurrent === null ||
+    oldStart === undefined ||
+    oldTotal === undefined ||
+    oldCurrent < oldStart ||
+    oldCurrent > oldTotal
   ) {
     await interaction.reply({ content: Texts.participant.updatePageInvalid, ephemeral: true });
     return;
   }
-  await updateCurrentPage(participant, oldCurrentPage);
+  await updateBookProgress(participant, oldCurrent);
+
+  const input: NewBookInput = {
+    title: book.title,
+    format,
+    current,
+    total,
+    goalDelta: goalDelta ?? undefined,
+  };
 
   const updatedParticipant = await switchBook(
     participantId,
     interaction.user.id,
     interaction.guildId!,
-    book.title,
-    currentPage,
-    book.totalPages,
-    goalPage
+    input
   );
 
   if (!updatedParticipant) {

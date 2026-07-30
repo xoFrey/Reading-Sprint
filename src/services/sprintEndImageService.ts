@@ -2,6 +2,7 @@ import { Client, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js
 import { ParticipantResult } from "./sprintService";
 import { buildCardListImage, CardEntry } from "./cardImageService";
 import { formatMinutes } from "../utils/format";
+import { formatDeltaWithGoal, formatLabel } from "./bookProgress";
 import { Texts } from "../config/texts";
 import { CustomId, buildCustomId } from "../config/constants";
 
@@ -51,16 +52,9 @@ export async function buildSprintEndImage(
       size: 128,
     });
 
-    const bookLines = result.books.map((book) => {
-      const pagesRead = book.currentPage - book.startPage;
-      // Falls ein Ziel gesetzt war, zeigt die Zeile "gelesen/Ziel Seiten"
-      // (z.B. "50/30 Seiten" = 30 Seiten waren das Ziel, 50 wurden gelesen).
-      if (book.goalPage !== undefined) {
-        const goalPagesWanted = book.goalPage - book.startPage;
-        return `${book.title}: ${pagesRead}/${goalPagesWanted} Seiten`;
-      }
-      return `${book.title}: ${pagesRead} Seiten`;
-    });
+    const bookLines = result.books.map(
+      (book) => `${book.title} (${formatLabel(book.format)}): ${formatDeltaWithGoal(book)}`
+    );
 
     const xpUntilNext = result.xpForNextLevel - result.currentLevelXP;
     const goalStatus = result.goalReached
@@ -69,10 +63,11 @@ export async function buildSprintEndImage(
 
     const detailLines: string[] = [...bookLines];
 
-    // Gesamt-Seitenzahl nur als eigene Zeile, wenn mehrere Bücher gelesen
-    // wurden - bei nur einem Buch wäre das eine reine Wiederholung der Zeile oben.
+    // Gesamt-Seitenzahl (Seiten-Äquivalent, im Hintergrund berechnet) nur als
+    // eigene Zeile, wenn mehrere Bücher gelesen wurden - bei nur einem Buch
+    // wäre das eine reine Wiederholung der Zeile oben.
     if (result.books.length > 1) {
-      detailLines.push(`Gesamt: ${result.totalPagesRead} Seiten`);
+      detailLines.push(`Gesamt: ${result.totalPagesRead} Seiten (Äquivalent)`);
     }
 
     detailLines.push(

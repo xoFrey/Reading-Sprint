@@ -2,6 +2,7 @@ import { ButtonInteraction, StringSelectMenuBuilder, ActionRowBuilder } from "di
 import { CustomId, buildCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 import { Book } from "../database/models/Book";
+import { describeBookTotal, formatLabel } from "../services/bookProgress";
 
 const MAX_BOOKS_SHOWN = 25; // Discord-Limit für Select-Menü-Optionen
 
@@ -24,7 +25,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       books.slice(0, MAX_BOOKS_SHOWN).map((book) => ({
         label: book.title.slice(0, 100),
         value: book.id,
-        description: `${book.totalPages} Seiten${book.isFinished ? " · Beendet" : ""}`.slice(0, 100),
+        description: `${formatLabel(book.format)} · ${describeBookTotal(book.format, book.totalPages, book.totalMinutes)}${book.isFinished ? " · Beendet" : ""}`.slice(0, 100),
       }))
     );
 

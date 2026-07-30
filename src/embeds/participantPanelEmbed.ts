@@ -7,10 +7,11 @@ import {
 import { Colors, CustomId, buildCustomId } from "../config/constants";
 import { ISprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook } from "../services/sprintService";
+import { formatCurrentProgress, formatDeltaProgress, formatGoal, formatLabel } from "../services/bookProgress";
 
 /**
  * Baut das private (ephemeral) Panel, das ein Teilnehmer nach dem Beitritt sieht.
- * Wird nach jeder Aktion (Seitenzahl ändern, Buch wechseln, ...) neu aufgebaut
+ * Wird nach jeder Aktion (Fortschritt ändern, Buch wechseln, ...) neu aufgebaut
  * und per interaction.update() aktualisiert.
  */
 export function buildParticipantPanel(
@@ -23,24 +24,15 @@ export function buildParticipantPanel(
     .setTitle("📖 Dein Sprint-Fortschritt");
 
   if (currentBook) {
-    const pagesRead = currentBook.currentPage - currentBook.startPage;
     embed.addFields(
-      { name: "Buch", value: currentBook.title, inline: true },
-      {
-        name: "Seite",
-        value: `${currentBook.currentPage} / ${currentBook.totalPages}`,
-        inline: true,
-      },
-      { name: "Gelesen in diesem Sprint", value: `${Math.max(0, pagesRead)} Seiten`, inline: true }
+      { name: "Buch", value: `${currentBook.title} (${formatLabel(currentBook.format)})`, inline: true },
+      { name: "Stand", value: formatCurrentProgress(currentBook), inline: true },
+      { name: "Gelesen/Gehört in diesem Sprint", value: formatDeltaProgress(currentBook), inline: true }
     );
 
-    if (currentBook.goalPage !== undefined) {
-      const pagesWanted = currentBook.goalPage - currentBook.startPage;
-      embed.addFields({
-        name: "Ziel",
-        value: `${pagesWanted} Seiten (bis Seite ${currentBook.goalPage})`,
-        inline: true,
-      });
+    const goalText = formatGoal(currentBook);
+    if (goalText) {
+      embed.addFields({ name: "Ziel", value: goalText, inline: true });
     }
   }
 
@@ -51,7 +43,7 @@ export function buildParticipantPanel(
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(buildCustomId(CustomId.PARTICIPANT_UPDATE_PAGE, participant.id))
-      .setLabel("Seite aktualisieren")
+      .setLabel("Fortschritt aktualisieren")
       .setEmoji("✏️")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()

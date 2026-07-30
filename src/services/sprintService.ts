@@ -2,20 +2,21 @@ import { Sprint, ISprint } from "../database/models/Sprint";
 import { SprintParticipant, ISprintParticipant } from "../database/models/SprintParticipant";
 import { User, IUser } from "../database/models/User";
 import { Guild } from "../database/models/Guild";
-import { ParticipantBook } from "../types";
+import { ParticipantBook, BookFormat } from "../types";
 import { resolveXPConfig } from "../config/xpConfig";
 import { GRACE_PERIOD_MINUTES } from "../config/constants";
 import { calculateSprintXP, applyXPGain } from "../xp/xpService";
 import { calculateLevelProgress } from "../xp/levelCurve";
 import { updateStreak } from "./streakService";
 import { findOrCreateBook, markBookFinished } from "./bookService";
+import { getPagesEquivalent, isBookGoalReached, isBookComplete } from "./bookProgress";
 
 // Ergebnis eines einzelnen Teilnehmers, wird für das Abschluss-Leaderboard genutzt.
 export interface ParticipantResult {
   userId: string;
   placement: number; // wird erst nach dem Sortieren aller Ergebnisse gesetzt
   books: ParticipantBook[];
-  totalPagesRead: number;
+  totalPagesRead: number; // Seiten-Äquivalent über ALLE Bücher/Formate hinweg (Hintergrundberechnung)
   goalReached: boolean;
   xpEarned: number;
   leveledUp: boolean;
@@ -24,6 +25,45 @@ export interface ParticipantResult {
   minutesInSprint: number; // Dauer der tatsächlichen Teilnahme
   currentLevelXP: number; // XP-Fortschritt im NEUEN Level (nach der Vergabe)
   xpForNextLevel: number; // benötigte XP fürs nächste Level (nach der Vergabe)
+}
+
+// Eingabedaten für ein neu eingetragenes Buch (Beitritt oder Buchwechsel),
+// format-agnostisch: `current`/`total`/`goalDelta` bedeuten je nach `format`
+// unterschiedliche Einheiten (Seite / Prozent / Minute) - siehe bookProgress.ts.
+export interface NewBookInput {
+  title: string;
+  format: BookFormat;
+  current: number; // Seite | Prozent (0-100) | Minute
+  total: number; // Gesamtseiten (physical/ebook) | Gesamtminuten (audiobook)
+  goalDelta?: number; // "wie viel lesen/hören" - wird zu einem absoluten Ziel umgerechnet
+}
+
+// Baut ein ParticipantBook-Sub-Dokument aus den format-agnostischen Eingabedaten.
+function buildParticipantBook(input: NewBookInput): ParticipantBook {
+  const book: ParticipantBook = { title: input.title, format: input.format, isFinished: false };
+
+  switch (input.format) {
+    case "physical":
+      book.totalPages = input.total;
+      book.startPage = input.current;
+      book.currentPage = input.current;
+      if (input.goalDelta) book.goalPage = input.current + input.goalDelta;
+      break;
+    case "ebook":
+      book.totalPages = input.total;
+      book.startPercent = input.current;
+      book.currentPercent = input.current;
+      if (input.goalDelta) book.goalPercent = input.current + input.goalDelta;
+      break;
+    case "audiobook":
+      book.totalMinutes = input.total;
+      book.startMinutes = input.current;
+      book.currentMinutes = input.current;
+      if (input.goalDelta) book.goalMinutes = input.current + input.goalDelta;
+      break;
+  }
+
+  return book;
 }
 
 /**
@@ -56,21 +96,11 @@ export async function joinSprint(
   sprintId: string,
   userId: string,
   guildId: string,
-  bookTitle: string,
-  currentPage: number,
-  totalPages: number,
-  goalPage?: number
+  input: NewBookInput
 ): Promise<ISprintParticipant> {
-  const book = await findOrCreateBook(userId, guildId, bookTitle, totalPages);
+  const book = await findOrCreateBook(userId, guildId, input.title, input.format, input.total);
 
-  const initialBook: ParticipantBook = {
-    title: book.title,
-    startPage: currentPage,
-    currentPage,
-    totalPages,
-    goalPage,
-    isFinished: false,
-  };
+  const initialBook = buildParticipantBook({ ...input, title: book.title });
 
   return SprintParticipant.create({
     sprintId,
@@ -89,21 +119,11 @@ export async function switchBook(
   participantId: string,
   userId: string,
   guildId: string,
-  bookTitle: string,
-  currentPage: number,
-  totalPages: number,
-  goalPage?: number
+  input: NewBookInput
 ): Promise<ISprintParticipant | null> {
-  const book = await findOrCreateBook(userId, guildId, bookTitle, totalPages);
+  const book = await findOrCreateBook(userId, guildId, input.title, input.format, input.total);
 
-  const newBook: ParticipantBook = {
-    title: book.title,
-    startPage: currentPage,
-    currentPage,
-    totalPages,
-    goalPage,
-    isFinished: false,
-  };
+  const newBook = buildParticipantBook({ ...input, title: book.title });
 
   return SprintParticipant.findByIdAndUpdate(
     participantId,
@@ -118,26 +138,40 @@ export function getCurrentBook(participant: ISprintParticipant): ParticipantBook
 }
 
 /**
- * Aktualisiert die aktuelle Seite im gerade aktiven Buch des Teilnehmers.
- * Markiert das Buch automatisch als fertig, wenn currentPage die Gesamtseitenzahl erreicht.
+ * Aktualisiert den Fortschritt im gerade aktiven Buch des Teilnehmers -
+ * format-agnostisch: `newValue` ist eine Seite (physical), ein Prozentwert
+ * (ebook) oder eine Minutenzahl (audiobook), je nachdem was das Buchformat ist.
+ * Markiert das Buch automatisch als fertig, sobald 100% erreicht sind.
  */
-export async function updateCurrentPage(
+export async function updateBookProgress(
   participant: ISprintParticipant,
-  newCurrentPage: number
+  newValue: number
 ): Promise<void> {
   const book = getCurrentBook(participant);
   if (!book) return;
 
-  book.currentPage = newCurrentPage;
+  switch (book.format) {
+    case "physical":
+      book.currentPage = newValue;
+      break;
+    case "ebook":
+      book.currentPercent = newValue;
+      break;
+    case "audiobook":
+      book.currentMinutes = newValue;
+      break;
+  }
 
-  if (newCurrentPage >= book.totalPages && !book.isFinished) {
+  if (isBookComplete(book) && !book.isFinished) {
     book.isFinished = true;
     // Buch auch in der persönlichen Bibliothek als fertig markieren.
+    const totalValue = book.format === "audiobook" ? book.totalMinutes! : book.totalPages!;
     const libraryBook = await findOrCreateBook(
       participant.userId,
       participant.guildId,
       book.title,
-      book.totalPages
+      book.format,
+      totalValue
     );
     await markBookFinished(libraryBook.id);
   }
@@ -199,8 +233,9 @@ export async function startGracePeriod(sprintId: string): Promise<ISprint> {
 
 /**
  * Wertet einen Sprint final aus: berechnet für jeden Teilnehmer die gelesenen
- * Seiten, vergibt XP, aktualisiert Streak & Nutzerstatistiken und liefert eine
- * sortierte Ergebnisliste fürs öffentliche Abschluss-Leaderboard zurück.
+ * Seiten (als Seiten-Äquivalent über alle Formate hinweg), vergibt XP,
+ * aktualisiert Streak & Nutzerstatistiken und liefert eine sortierte
+ * Ergebnisliste fürs öffentliche Abschluss-Leaderboard zurück.
  *
  * Wird sowohl nach Ablauf der Kulanzzeit (normaler Ablauf) als auch beim
  * manuellen Admin-Abbruch (End-Button, überspringt die Kulanzzeit) aufgerufen.
@@ -221,31 +256,20 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
 
   // Auch Teilnehmer, die vorzeitig verlassen haben (status "left"), zählen
   // im Leaderboard - mit dem Stand, den sie bis zu ihrem Ausstieg erreicht
-  // hatten (books.currentPage wurde beim Verlassen nicht mehr verändert).
+  // hatten (books wurde beim Verlassen nicht mehr verändert).
   const participants = await SprintParticipant.find({ sprintId });
 
   const results: ParticipantResult[] = [];
 
   for (const participant of participants) {
-    const rawPagesRead = participant.books.reduce(
-      (sum, book) => sum + Math.max(0, book.currentPage - book.startPage),
-      0
-    );
-    // Absicherung gegen fehlerhafte/alte Datensätze (z.B. currentPage nicht
-    // numerisch gespeichert) - ein einzelner kaputter Teilnehmer soll nicht
-    // die gesamte Auswertung crashen lassen, sondern einfach mit 0 gelten.
-    const totalPagesRead = Number.isFinite(rawPagesRead) ? rawPagesRead : 0;
+    // Seiten-Äquivalent über ALLE Bücher/Formate hinweg summiert - das ist
+    // die "Im Hintergrund alles in Seiten"-Berechnung aus der Anforderung.
+    const rawPagesRead = participant.books.reduce((sum, book) => sum + getPagesEquivalent(book), 0);
+    // Absicherung gegen fehlerhafte/alte Datensätze - ein einzelner kaputter
+    // Teilnehmer soll nicht die gesamte Auswertung crashen lassen.
+    const totalPagesRead = Number.isFinite(rawPagesRead) ? Math.round(rawPagesRead) : 0;
 
-    // Ziel gilt nur als erreicht, wenn es beim SPRINTSTART noch nicht bereits
-    // erfüllt war (startPage < goalPage) UND am Ende erreicht wurde. Sonst
-    // würde z.B. "0 Seiten gelesen, Ziel Seite 30, Start bei Seite 35" fälschlich
-    // als "Ziel erreicht" zählen, obwohl gar kein Fortschritt stattfand.
-    const goalReached = participant.books.some(
-      (book) =>
-        book.goalPage !== undefined &&
-        book.startPage < book.goalPage &&
-        book.currentPage >= book.goalPage
-    );
+    const goalReached = participant.books.some((book) => isBookGoalReached(book));
     const finishedBooksCount = participant.books.filter((book) => book.isFinished).length;
 
     // Lesezeit = Zeit von Beitritt bis Sprintende bzw. bis zum vorzeitigen
@@ -317,7 +341,7 @@ export async function finalizeSprint(sprintId: string): Promise<ParticipantResul
     });
   }
 
-  // Platzierung nach gelesenen Gesamtseiten, absteigend.
+  // Platzierung nach gelesenen Gesamtseiten (Seiten-Äquivalent), absteigend.
   results.sort((a, b) => b.totalPagesRead - a.totalPagesRead);
   results.forEach((result, index) => (result.placement = index + 1));
 

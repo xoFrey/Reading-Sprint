@@ -67,19 +67,32 @@ export const Texts = {
     goalPageLabel: "Seitenziel: wie viele Seiten? (optional)",
     alreadyJoined: "❌ Du nimmst bereits an diesem Sprint teil.",
     alreadyLeft: "❌ Du hast diesen Sprint bereits verlassen und kannst nicht erneut beitreten.",
-    currentPageExceedsTotal: "❌ Die aktuelle Seite darf nicht größer als die Gesamtseitenzahl des Buchs sein.",
+    currentPageExceedsTotal: "❌ Der aktuelle Fortschritt darf den Gesamtumfang des Buchs nicht überschreiten.",
+    invalidValue: "❌ Ungültige Eingabe. Bitte prüfe das Format (Seite/Prozent: Zahl, Hörbuch: Std:Min z.B. 2:30).",
+    invalidPercent: "❌ Der Prozentwert muss zwischen 0 und 100 liegen.",
     myPanelButtonLabel: "Mein Panel",
     notYetJoined: "❌ Du nimmst noch nicht an diesem Sprint teil. Klicke zuerst auf \"Beitreten\".",
     welcome: (bookTitle: string) =>
       `📖 Du liest gerade **${bookTitle}**. Nutze die Buttons, um deinen Fortschritt zu verwalten.`,
   },
 
+  bookFormat: {
+    selectPrompt: "📚 Welches Format hat das Buch?",
+    selectPlaceholder: "Format auswählen...",
+    physicalLabel: "📖 Physisch",
+    physicalDescription: "Fortschritt in Seiten",
+    ebookLabel: "📱 Ebook",
+    ebookDescription: "Fortschritt in Prozent",
+    audiobookLabel: "🎧 Hörbuch",
+    audiobookDescription: "Fortschritt in Std:Min",
+  },
+
   bookSelect: {
     prompt: "📚 Wähle ein Buch aus deiner Bibliothek oder trage ein neues ein:",
     placeholder: "Buch auswählen...",
     newBookOptionLabel: "📕 Neues Buch eintragen",
-    newBookOptionDescription: "Titel & Gesamtseitenzahl selbst eingeben",
-    bookOptionDescription: (totalPages: number) => `${totalPages} Seiten insgesamt`,
+    newBookOptionDescription: "Format, Titel & Umfang selbst eingeben",
+    bookOptionDescription: (format: string, totalLabel: string) => `${format} · ${totalLabel}`,
     modalTitleExisting: "Weiterlesen",
   },
 
@@ -105,7 +118,8 @@ export const Texts = {
     updatePageModalTitle: "Fortschritt aktualisieren",
     updatePageLabel: "Aktuelle Seite",
     updatePageSuccess: "✅ Fortschritt aktualisiert.",
-    updatePageInvalid: "❌ Ungültige Seitenzahl. Sie muss zwischen Startseite und Gesamtseitenzahl liegen.",
+    updatePageInvalid:
+      "❌ Ungültiger Fortschritt. Er muss zwischen dem Startwert und dem Gesamtumfang liegen.",
   },
 
   sprintEnd: {

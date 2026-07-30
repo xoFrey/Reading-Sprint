@@ -24,13 +24,28 @@ export interface ISprintParticipant extends Document {
   totalPausedMs: number;
 }
 
+// Ein Buch kann physisch (Seiten), Ebook (Prozent) oder Hörbuch (Minuten)
+// sein - je nach `format` werden nur die passenden Felder befüllt (siehe
+// services/bookProgress.ts für die zugehörige Berechnungs-/Anzeigelogik).
 const ParticipantBookSchema = new Schema<ParticipantBook>(
   {
     title: { type: String, required: true },
-    startPage: { type: Number, required: true },
-    currentPage: { type: Number, required: true },
-    totalPages: { type: Number, required: true },
+    format: { type: String, enum: ["physical", "ebook", "audiobook"], required: true },
+
+    totalPages: { type: Number },
+    startPage: { type: Number },
+    currentPage: { type: Number },
     goalPage: { type: Number },
+
+    startPercent: { type: Number },
+    currentPercent: { type: Number },
+    goalPercent: { type: Number },
+
+    totalMinutes: { type: Number },
+    startMinutes: { type: Number },
+    currentMinutes: { type: Number },
+    goalMinutes: { type: Number },
+
     isFinished: { type: Boolean, default: false },
   },
   { _id: false } // Bücher brauchen keine eigene ID, sie sind reine Sub-Dokumente

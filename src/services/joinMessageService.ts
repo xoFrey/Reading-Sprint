@@ -1,8 +1,42 @@
 import { Client, TextChannel } from "discord.js";
 import { Sprint } from "../database/models/Sprint";
-import { SprintParticipant } from "../database/models/SprintParticipant";
+import { SprintParticipant, ISprintParticipant } from "../database/models/SprintParticipant";
 import { buildJoinEmbed, JoinEmbedParticipant } from "../embeds/joinEmbed";
 import { getCurrentBook } from "./sprintService";
+import { formatHM } from "./bookProgress";
+
+/**
+ * Baut die Teilnehmerliste fürs öffentliche Sprint-Embed - format-abhängig
+ * beschriftet (Seite/Prozent/Std:Min). Zentral hier, damit refreshJoinMessage
+ * und das manuelle Blättern (joinParticipantsPageButton.ts) dieselbe Logik nutzen.
+ */
+export function buildJoinEmbedParticipants(participants: ISprintParticipant[]): JoinEmbedParticipant[] {
+  return participants.map((participant) => {
+    const currentBook = getCurrentBook(participant);
+    let progressLabel = "gerade begonnen";
+
+    if (currentBook) {
+      switch (currentBook.format) {
+        case "physical":
+          progressLabel = `ab Seite ${currentBook.startPage}`;
+          break;
+        case "ebook":
+          progressLabel = `ab ${currentBook.startPercent}%`;
+          break;
+        case "audiobook":
+          progressLabel = `ab ${formatHM(currentBook.startMinutes ?? 0)} Std`;
+          break;
+      }
+    }
+
+    return {
+      userId: participant.userId,
+      bookTitle: currentBook?.title ?? "—",
+      progressLabel,
+      paused: participant.status === "paused",
+    };
+  });
+}
 
 /**
  * Baut das öffentliche Sprint-Embed neu und aktualisiert die gepostete
@@ -28,15 +62,7 @@ export async function refreshJoinMessage(client: Client, sprintId: string): Prom
     status: { $ne: "left" },
   });
 
-  const participants: JoinEmbedParticipant[] = activeParticipants.map((participant) => {
-    const currentBook = getCurrentBook(participant);
-    return {
-      userId: participant.userId,
-      bookTitle: currentBook?.title ?? "—",
-      startPage: currentBook?.startPage ?? 0,
-      paused: participant.status === "paused",
-    };
-  });
+  const participants = buildJoinEmbedParticipants(activeParticipants);
 
   const endTime = new Date(sprint.startTime.getTime() + sprint.duration * 60_000);
   const { embed, components } = buildJoinEmbed(

@@ -1,5 +1,6 @@
 import {
   StringSelectMenuInteraction,
+  StringSelectMenuBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -7,12 +8,17 @@ import {
 } from "discord.js";
 import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from "../config/constants";
 import { Texts } from "../config/texts";
+import { Book } from "../database/models/Book";
+import { SprintParticipant } from "../database/models/SprintParticipant";
+import { getCurrentBook } from "../services/sprintService";
+import { getCurrentFieldLabel, getGoalFieldLabel, getOldCurrentFieldLabel } from "../services/bookProgress";
 
 /**
  * Reagiert auf die Buchauswahl aus buttons/switchBookButton.ts.
- * - "Neues Buch" -> das bekannte 5-Felder-Modal (alte Seite + neues Buch komplett).
- * - vorhandenes Buch -> schlankes 3-Felder-Modal (alte Seite, neue Seite, Ziel),
- *   Titel/Gesamtseiten kommen aus der Bibliothek (siehe switchToExistingBookModal.ts).
+ * - "Neues Buch" -> erst Format-Auswahl (siehe bookFormatSelect.ts).
+ * - vorhandenes Buch -> Modal mit "alte Seite" (Format des BISHERIGEN Buchs)
+ *   + Fortschritt/Ziel (Format des NEUEN, gewählten Buchs) - Titel/Umfang
+ *   kommen aus der Bibliothek.
  */
 export async function execute(interaction: StringSelectMenuInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
@@ -20,81 +26,57 @@ export async function execute(interaction: StringSelectMenuInteraction): Promise
   const selectedValue = interaction.values[0];
 
   if (selectedValue === NEW_BOOK_SELECT_VALUE) {
-    const modal = new ModalBuilder()
-      .setCustomId(buildCustomId(CustomId.MODAL_SWITCH_BOOK, participantId))
-      .setTitle(Texts.join.modalTitle);
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(buildCustomId(CustomId.SELECT_NEW_BOOK_FORMAT, "switch", participantId))
+      .setPlaceholder(Texts.bookFormat.selectPlaceholder)
+      .addOptions(
+        { label: Texts.bookFormat.physicalLabel, value: "physical", description: Texts.bookFormat.physicalDescription },
+        { label: Texts.bookFormat.ebookLabel, value: "ebook", description: Texts.bookFormat.ebookDescription },
+        { label: Texts.bookFormat.audiobookLabel, value: "audiobook", description: Texts.bookFormat.audiobookDescription }
+      );
 
-    const oldPageInput = new TextInputBuilder()
-      .setCustomId("oldCurrentPage")
-      .setLabel(Texts.participant.oldBookPageLabel)
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const titleInput = new TextInputBuilder()
-      .setCustomId("title")
-      .setLabel(Texts.join.bookTitleLabel)
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const currentPageInput = new TextInputBuilder()
-      .setCustomId("currentPage")
-      .setLabel(Texts.join.currentPageLabel)
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const totalPagesInput = new TextInputBuilder()
-      .setCustomId("totalPages")
-      .setLabel(Texts.join.totalPagesLabel)
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const goalPageInput = new TextInputBuilder()
-      .setCustomId("goalPage")
-      .setLabel(Texts.join.goalPageLabel)
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false);
-
-    modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(oldPageInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(currentPageInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(totalPagesInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(goalPageInput)
-    );
-
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.update({ content: Texts.bookFormat.selectPrompt, components: [row] });
     return;
   }
 
   // selectedValue ist hier die Book._id aus der Bibliothek.
   const bookId = selectedValue;
+  const book = await Book.findById(bookId);
+  const participant = await SprintParticipant.findById(participantId);
+  const oldBook = participant ? getCurrentBook(participant) : undefined;
+
+  if (!book || !oldBook) {
+    await interaction.update({ content: Texts.myBooks.notFound, components: [] });
+    return;
+  }
 
   const modal = new ModalBuilder()
     .setCustomId(buildCustomId(CustomId.MODAL_SWITCH_TO_EXISTING_BOOK, participantId, bookId))
     .setTitle(Texts.bookSelect.modalTitleExisting);
 
-  const oldPageInput = new TextInputBuilder()
-    .setCustomId("oldCurrentPage")
-    .setLabel(Texts.participant.oldBookPageLabel)
+  const oldCurrentInput = new TextInputBuilder()
+    .setCustomId("oldCurrent")
+    .setLabel(getOldCurrentFieldLabel(oldBook.format))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
-  const currentPageInput = new TextInputBuilder()
-    .setCustomId("currentPage")
-    .setLabel(Texts.join.currentPageLabel)
+  const currentInput = new TextInputBuilder()
+    .setCustomId("current")
+    .setLabel(getCurrentFieldLabel(book.format))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
-  const goalPageInput = new TextInputBuilder()
-    .setCustomId("goalPage")
-    .setLabel(Texts.join.goalPageLabel)
+  const goalInput = new TextInputBuilder()
+    .setCustomId("goal")
+    .setLabel(getGoalFieldLabel(book.format))
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 
   modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(oldPageInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(currentPageInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(goalPageInput)
+    new ActionRowBuilder<TextInputBuilder>().addComponents(oldCurrentInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(currentInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(goalInput)
   );
 
   await interaction.showModal(modal);

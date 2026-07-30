@@ -2,6 +2,8 @@ import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, Acti
 import { CustomId, buildCustomId, parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 import { SprintParticipant } from "../database/models/SprintParticipant";
+import { getCurrentBook } from "../services/sprintService";
+import { getCurrentFieldLabel } from "../services/bookProgress";
 
 /**
  * Sitzt auf der ÖFFENTLICHEN Kulanzzeit-Nachricht (siehe jobs/scheduler.ts).
@@ -25,17 +27,19 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
+  const currentBook = getCurrentBook(participant);
+
   const modal = new ModalBuilder()
     .setCustomId(buildCustomId(CustomId.MODAL_UPDATE_PAGE, participant.id))
     .setTitle(Texts.participant.updatePageModalTitle);
 
-  const pageInput = new TextInputBuilder()
-    .setCustomId("currentPage")
-    .setLabel(Texts.participant.updatePageLabel)
+  const valueInput = new TextInputBuilder()
+    .setCustomId("current")
+    .setLabel(currentBook ? getCurrentFieldLabel(currentBook.format) : Texts.participant.updatePageLabel)
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
-  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(pageInput));
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(valueInput));
 
   await interaction.showModal(modal);
 }

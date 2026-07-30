@@ -36,6 +36,7 @@ import * as editBookModal from "../modals/editBookModal";
 
 import * as joinBookSelect from "../selects/joinBookSelect";
 import * as switchBookSelect from "../selects/switchBookSelect";
+import * as bookFormatSelect from "../selects/bookFormatSelect";
 import * as manageBookSelect from "../selects/manageBookSelect";
 import * as cancelScheduleSelect from "../selects/cancelScheduleSelect";
 
@@ -79,6 +80,7 @@ const modalHandlers: Record<string, (interaction: ModalSubmitInteraction) => Pro
 const selectHandlers: Record<string, (interaction: StringSelectMenuInteraction) => Promise<void>> = {
   [CustomId.SELECT_JOIN_BOOK]: joinBookSelect.execute,
   [CustomId.SELECT_SWITCH_BOOK]: switchBookSelect.execute,
+  [CustomId.SELECT_NEW_BOOK_FORMAT]: bookFormatSelect.execute,
   [CustomId.SELECT_MANAGE_BOOK]: manageBookSelect.execute,
   [CustomId.SELECT_CANCEL_SCHEDULE]: cancelScheduleSelect.execute,
 };

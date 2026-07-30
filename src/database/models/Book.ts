@@ -1,13 +1,20 @@
 import { Schema, model, Document } from "mongoose";
+import { BookFormat } from "../../types";
 
 // Persönliche Bibliothek eines Nutzers. Wird beim erneuten Sprint-Beitritt
-// vorgeschlagen, damit Titel/Seitenzahl nicht jedes Mal neu eingegeben werden müssen.
+// vorgeschlagen, damit Titel/Gesamtseiten/-dauer nicht jedes Mal neu
+// eingegeben werden müssen.
 export interface IBook extends Document {
   userId: string; // discordId
   guildId: string;
 
   title: string;
-  totalPages: number;
+  format: BookFormat;
+
+  // physical & ebook
+  totalPages?: number;
+  // audiobook
+  totalMinutes?: number;
 
   isFinished: boolean;
   finishedAt?: Date;
@@ -22,7 +29,10 @@ const BookSchema = new Schema<IBook>(
     guildId: { type: String, required: true },
 
     title: { type: String, required: true, trim: true },
-    totalPages: { type: Number, required: true },
+    format: { type: String, enum: ["physical", "ebook", "audiobook"], default: "physical" },
+
+    totalPages: { type: Number },
+    totalMinutes: { type: Number },
 
     isFinished: { type: Boolean, default: false },
     finishedAt: { type: Date },

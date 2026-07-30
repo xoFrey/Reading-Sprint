@@ -6,6 +6,7 @@ import {
 import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from "../config/constants";
 import { Texts } from "../config/texts";
 import { getUnfinishedBooks } from "../services/bookService";
+import { describeBookTotal, formatLabel } from "../services/bookProgress";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook } from "../services/sprintService";
 
@@ -35,7 +36,9 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       ...unfinishedBooks.map((book) => ({
         label: book.title.slice(0, 100),
         value: book.id,
-        description: Texts.bookSelect.bookOptionDescription(book.totalPages).slice(0, 100),
+        description: Texts.bookSelect
+          .bookOptionDescription(formatLabel(book.format), describeBookTotal(book.format, book.totalPages, book.totalMinutes))
+          .slice(0, 100),
       })),
       {
         label: Texts.bookSelect.newBookOptionLabel,

@@ -3,8 +3,8 @@ import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 import { Sprint } from "../database/models/Sprint";
 import { SprintParticipant } from "../database/models/SprintParticipant";
-import { buildJoinEmbed, JoinEmbedParticipant } from "../embeds/joinEmbed";
-import { getCurrentBook } from "../services/sprintService";
+import { buildJoinEmbed } from "../embeds/joinEmbed";
+import { buildJoinEmbedParticipants } from "../services/joinMessageService";
 
 /**
  * Blättert für ALLE Betrachter gleichzeitig (die Nachricht wird direkt
@@ -30,15 +30,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     status: { $ne: "left" },
   });
 
-  const participants: JoinEmbedParticipant[] = activeParticipants.map((participant) => {
-    const currentBook = getCurrentBook(participant);
-    return {
-      userId: participant.userId,
-      bookTitle: currentBook?.title ?? "—",
-      startPage: currentBook?.startPage ?? 0,
-      paused: participant.status === "paused",
-    };
-  });
+  const participants = buildJoinEmbedParticipants(activeParticipants);
 
   sprint.participantsPage = requestedPage;
   await sprint.save();
