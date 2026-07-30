@@ -20,6 +20,14 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
+  // Start- und Enduhrzeit werden mit demselben Datum geparst. Liegt die
+  // Enduhrzeit dadurch vor (oder exakt auf) der Anfangsuhrzeit, gehen wir von
+  // einem Sprint über Mitternacht aus (z.B. 23:30 -> 01:00) und verschieben
+  // das Ende auf den nächsten Tag, statt eine negative Dauer zu berechnen.
+  if (scheduledEnd.getTime() <= scheduledStart.getTime()) {
+    scheduledEnd.setDate(scheduledEnd.getDate() + 1);
+  }
+
   // Dauer wird aus Start- und Endzeit berechnet, nicht mehr manuell eingegeben.
   const duration = Math.round((scheduledEnd.getTime() - scheduledStart.getTime()) / 60_000);
   if (duration <= 0) {
