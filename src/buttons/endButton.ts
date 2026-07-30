@@ -56,10 +56,14 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     : null;
 
   let resultsMessageId: string;
+  let resultsLinkMessageId: string | undefined;
   if (resultsChannel) {
     const sentMessage = await resultsChannel.send({ files: [attachment], components: row ? [row] : [] });
     resultsMessageId = sentMessage.id;
-    await interaction.editReply({ content: `${Texts.end.ended}\n📊 Ergebnisse: ${resultsChannel}` });
+    const linkMessage = await interaction.editReply({
+      content: `${Texts.end.ended}\n📊 Ergebnisse: ${resultsChannel}`,
+    });
+    resultsLinkMessageId = linkMessage.id;
   } else {
     const message = await interaction.editReply({
       content: Texts.end.ended,
@@ -73,5 +77,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     resultsMessageId,
     resultsChannelId: resultsChannel?.id ?? activeSprint.channelId,
     resultsSnapshot: results,
+    resultsLinkMessageId,
   });
 }

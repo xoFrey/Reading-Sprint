@@ -94,9 +94,12 @@ async function checkScheduledStarts(client: Client): Promise<void> {
     const sentMessage = await channel.send({ content, embeds: [embed], components });
 
     sprint.messageId = sentMessage.id;
-    // Erinnerungs-Message-IDs von der ScheduledSprint übernehmen, damit der
-    // Cleanup-Job (checkMessageCleanup) sie später mit aufräumen kann.
-    sprint.reminderMessageIds = scheduled.reminderMessageIds;
+    // Erinnerungs- und Ankündigungs-Message-IDs von der ScheduledSprint
+    // übernehmen, damit der Cleanup-Job (checkMessageCleanup) sie später mit
+    // aufräumen kann.
+    sprint.reminderMessageIds = scheduled.announcementMessageId
+      ? [...scheduled.reminderMessageIds, scheduled.announcementMessageId]
+      : scheduled.reminderMessageIds;
     await sprint.save();
 
     scheduled.status = "triggered";
@@ -181,8 +184,12 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
       components: row ? [row] : [],
     });
 
+    let resultsLinkMessageId: string | undefined;
     if (resultsChannel.id !== sprint.channelId && sprintChannel) {
-      await sprintChannel.send(`📊 Ergebnisse: ${resultsChannel}`).catch(() => undefined);
+      const linkMessage = await sprintChannel
+        .send(`📊 Ergebnisse: ${resultsChannel}`)
+        .catch(() => undefined);
+      resultsLinkMessageId = linkMessage?.id;
     }
 
     // sprint wurde in finalizeSprint() bereits gespeichert (status: "ended");
@@ -190,16 +197,17 @@ async function checkGracePeriodEnds(client: Client): Promise<void> {
     sprint.resultsMessageId = sentMessage.id;
     sprint.resultsChannelId = resultsChannel.id;
     sprint.resultsSnapshot = results as unknown as unknown[];
+    sprint.resultsLinkMessageId = resultsLinkMessageId;
     await sprint.save();
   }
 }
 
 /**
  * Löscht die Kanal-Nachrichten eines Sprints (Beitreten-Embed, Erinnerungen,
- * Kulanzzeit-Ankündigung), sobald er seit mindestens
- * MESSAGE_CLEANUP_DELAY_MINUTES beendet ist. Das Ergebnis-Bild (resultsMessageId)
- * wird BEWUSST NICHT gelöscht - das Abschluss-Leaderboard soll dauerhaft
- * stehen bleiben.
+ * Planungs-Ankündigung, Kulanzzeit-Ankündigung, Ergebnis-LINK), sobald er
+ * seit mindestens MESSAGE_CLEANUP_DELAY_MINUTES beendet ist. Das eigentliche
+ * Ergebnis-Bild (resultsMessageId, ggf. in einem separaten Kanal) wird
+ * BEWUSST NICHT gelöscht - das Abschluss-Leaderboard soll dauerhaft stehen bleiben.
  */
 async function checkMessageCleanup(client: Client): Promise<void> {
   const cutoff = new Date(Date.now() - MESSAGE_CLEANUP_DELAY_MINUTES * 60_000);
@@ -216,7 +224,12 @@ async function checkMessageCleanup(client: Client): Promise<void> {
     if (channel) {
       // Jeder Löschversuch unabhängig von den anderen - falls eine Nachricht
       // bereits manuell gelöscht wurde, soll das die übrigen nicht verhindern.
-      const messageIds = [sprint.messageId, sprint.graceMessageId, ...sprint.reminderMessageIds];
+      const messageIds = [
+        sprint.messageId,
+        sprint.graceMessageId,
+        sprint.resultsLinkMessageId,
+        ...sprint.reminderMessageIds,
+      ];
 
       for (const messageId of messageIds) {
         if (!messageId) continue;

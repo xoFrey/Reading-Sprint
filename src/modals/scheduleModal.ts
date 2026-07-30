@@ -38,7 +38,7 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
-  await ScheduledSprint.create({
+  const scheduledSprint = await ScheduledSprint.create({
     guildId: interaction.guildId,
     channelId: interaction.channelId!,
     scheduledStart,
@@ -57,11 +57,16 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   const roleMention = getRoleMention();
   if (roleMention) {
     const channel = interaction.channel as TextChannel | null;
-    await channel
+    const sentMessage = await channel
       ?.send(
         `${roleMention} 📅 Neuer Sprint geplant für <t:${unixTimestamp}:F> (Dauer: ${formatMinutes(duration)}).`
       )
       .catch(() => undefined);
+
+    if (sentMessage) {
+      scheduledSprint.announcementMessageId = sentMessage.id;
+      await scheduledSprint.save();
+    }
   }
 
   await refreshPanel(interaction.client, interaction.guildId!);

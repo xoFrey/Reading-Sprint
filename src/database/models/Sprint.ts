@@ -18,6 +18,11 @@ export interface ISprint extends Document {
   resultsChannelId?: string; // Kanal, in dem die Ergebnisse gepostet wurden (kann vom Sprint-Kanal abweichen)
   resultsSnapshot?: unknown[]; // gespeicherte ParticipantResult[] für Pagination nach dem Posten
 
+  // Falls die Ergebnisse in einem separaten Kanal landen, wird im Sprint-Kanal
+  // zusätzlich ein Verweis gepostet ("📊 Ergebnisse: #kanal"). DIESER Verweis
+  // wird - anders als resultsMessageId - vom Cleanup-Job mit aufgeräumt.
+  resultsLinkMessageId?: string;
+
   status: SprintStatus;
 
   startTime: Date;
@@ -44,6 +49,7 @@ const SprintSchema = new Schema<ISprint>(
     resultsMessageId: { type: String },
     resultsChannelId: { type: String },
     resultsSnapshot: { type: Schema.Types.Mixed },
+    resultsLinkMessageId: { type: String },
 
     status: {
       type: String,
