@@ -226,9 +226,9 @@ export function getOldCurrentFieldLabel(format: BookFormat): string {
     case "physical":
       return "Aktuelle Seite (bisheriges Buch)";
     case "ebook":
-      return "Aktueller Fortschritt in % (bisheriges Buch)";
+      return "Fortschritt % (bisheriges Buch)";
     case "audiobook":
-      return "Aktuelle Position (bisheriges Hörbuch, Std:Min)";
+      return "Position (bisher, Std:Min)";
   }
 }
 
@@ -243,7 +243,7 @@ export function getGoalFieldLabel(format: BookFormat): string {
     case "ebook":
       return "Zielfortschritt: wie viel %? (optional)";
     case "audiobook":
-      return "Zielzeit: wie lange hören? (Std:Min, optional)";
+      return "Zielzeit (Std:Min, optional)";
   }
 }
 
