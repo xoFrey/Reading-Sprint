@@ -6,19 +6,19 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "deploy-commands": "ts-node src/deploy-commands.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.53",
     "discord.js": "^14.16.3",
-    "mongoose": "^8.8.0",
     "dotenv": "^16.4.5",
-    "@napi-rs/canvas": "^0.1.53"
+    "mongoose": "^8.8.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@types/node": "^22.9.0",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "@types/node": "^22.9.0"
+    "tsx": "^4.23.1",
+    "typescript": "^5.6.3"
   }
 }
