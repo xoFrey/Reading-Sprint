@@ -24,13 +24,17 @@ export async function getUnfinishedBooks(userId: string, guildId: string): Promi
  * und "harry potter" nicht als zwei verschiedene Bücher gelten.
  *
  * @param totalValue Gesamtseitenzahl (physical/ebook) oder Gesamtminuten (audiobook)
+ * @param audiobookPercentMode nur relevant für format="audiobook": Fortschritt
+ *   wird über % statt Std:Min erfasst (z.B. weil die Hörbuch-App nur %
+ *   Fortschritt zeigt, keine genaue Position)
  */
 export async function findOrCreateBook(
   userId: string,
   guildId: string,
   title: string,
   format: BookFormat,
-  totalValue: number
+  totalValue: number,
+  audiobookPercentMode?: boolean
 ): Promise<IBook> {
   const existing = await Book.findOne({
     userId,
@@ -42,6 +46,7 @@ export async function findOrCreateBook(
   if (existing) {
     // Format/Gesamtumfang könnten sich geändert haben (z.B. Tippfehler korrigiert).
     existing.format = format;
+    existing.audiobookPercentMode = format === "audiobook" ? audiobookPercentMode : undefined;
     if (format === "audiobook") {
       existing.totalMinutes = totalValue;
       existing.totalPages = undefined;
@@ -59,6 +64,7 @@ export async function findOrCreateBook(
     format,
     totalPages: format === "audiobook" ? undefined : totalValue,
     totalMinutes: format === "audiobook" ? totalValue : undefined,
+    audiobookPercentMode: format === "audiobook" ? audiobookPercentMode : undefined,
   });
 }
 

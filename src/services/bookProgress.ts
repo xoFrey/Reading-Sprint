@@ -6,6 +6,36 @@ import { BookFormat, ParticipantBook } from "../types";
 // falls sich das in der Praxis als zu großzügig/knapp herausstellt.
 export const AUDIOBOOK_MINUTES_PER_PAGE = 0.45;
 
+// Kurzform, ob ein Hörbuch über % statt Std:Min getrackt wird - an mehreren
+// Stellen gebraucht, daher als kleiner Helfer statt jedes Mal "book.format
+// === 'audiobook' && book.audiobookPercentMode" auszuschreiben.
+function isAudiobookPercent(book: Pick<ParticipantBook, "format" | "audiobookPercentMode">): boolean {
+  return book.format === "audiobook" && book.audiobookPercentMode === true;
+}
+
+// Liefert Start- und Maximalwert für die Fortschritts-Validierung, in der
+// jeweils passenden Einheit (Seite/Prozent/Minute). Zentral hier, weil sonst
+// an mehreren Stellen (Buchwechsel, "Seite aktualisieren") dieselbe
+// Fallunterscheidung nötig wäre - und weil das leicht falsch geht: Prozent-
+// Fortschritt muss gegen 100 geprüft werden, NICHT gegen die Gesamtseitenzahl.
+export function getProgressBounds(book: ParticipantBook): { start: number; max: number } | undefined {
+  switch (book.format) {
+    case "physical":
+      if (book.startPage === undefined || book.totalPages === undefined) return undefined;
+      return { start: book.startPage, max: book.totalPages };
+    case "ebook":
+      if (book.startPercent === undefined) return undefined;
+      return { start: book.startPercent, max: 100 };
+    case "audiobook":
+      if (isAudiobookPercent(book)) {
+        if (book.startPercent === undefined) return undefined;
+        return { start: book.startPercent, max: 100 };
+      }
+      if (book.startMinutes === undefined || book.totalMinutes === undefined) return undefined;
+      return { start: book.startMinutes, max: book.totalMinutes };
+  }
+}
+
 /**
  * Formatiert Minuten als "H:MM" fürs Eintippen in Modals (z.B. "2:30").
  * Bewusst anders als utils/format.ts#formatMinutes ("2 Std 30 Min"), das ist
@@ -50,6 +80,11 @@ export function getPagesEquivalent(book: ParticipantBook): number {
       return percentRead * book.totalPages;
     }
     case "audiobook": {
+      if (isAudiobookPercent(book)) {
+        if (book.currentPercent == null || book.startPercent == null || !book.totalMinutes) return 0;
+        const percentListened = Math.max(0, book.currentPercent - book.startPercent) / 100;
+        return percentListened * book.totalMinutes * AUDIOBOOK_MINUTES_PER_PAGE;
+      }
       if (book.currentMinutes == null || book.startMinutes == null) return 0;
       const minutesListened = Math.max(0, book.currentMinutes - book.startMinutes);
       return minutesListened * AUDIOBOOK_MINUTES_PER_PAGE;
@@ -81,6 +116,15 @@ export function isBookGoalReached(book: ParticipantBook): boolean {
         book.currentPercent >= book.goalPercent
       );
     case "audiobook":
+      if (isAudiobookPercent(book)) {
+        return (
+          book.goalPercent !== undefined &&
+          book.startPercent !== undefined &&
+          book.currentPercent !== undefined &&
+          book.startPercent < book.goalPercent &&
+          book.currentPercent >= book.goalPercent
+        );
+      }
       return (
         book.goalMinutes !== undefined &&
         book.startMinutes !== undefined &&
@@ -102,6 +146,9 @@ export function isBookComplete(book: ParticipantBook): boolean {
     case "ebook":
       return book.currentPercent !== undefined && book.currentPercent >= 100;
     case "audiobook":
+      if (isAudiobookPercent(book)) {
+        return book.currentPercent !== undefined && book.currentPercent >= 100;
+      }
       return (
         book.currentMinutes !== undefined &&
         book.totalMinutes !== undefined &&
@@ -127,6 +174,12 @@ export function formatDeltaWithGoal(book: ParticipantBook): string {
       return `${deltaPercent}%/${goalPercent}%`;
     }
     case "audiobook": {
+      if (isAudiobookPercent(book)) {
+        if (book.goalPercent === undefined || book.startPercent === undefined) return formatDeltaProgress(book);
+        const deltaPercent = Math.max(0, (book.currentPercent ?? 0) - book.startPercent);
+        const goalPercent = book.goalPercent - book.startPercent;
+        return `${deltaPercent}%/${goalPercent}%`;
+      }
       if (book.goalMinutes === undefined || book.startMinutes === undefined) return formatDeltaProgress(book);
       const deltaMinutes = Math.max(0, (book.currentMinutes ?? 0) - book.startMinutes);
       const goalMinutes = book.goalMinutes - book.startMinutes;
@@ -136,7 +189,8 @@ export function formatDeltaWithGoal(book: ParticipantBook): string {
 }
 
 // Anzeige des AKTUELLEN Standes (für das private Teilnehmer-Panel), z.B.
-// "180 / 400 Seiten", "45% (135/300 Seiten)", "2:15 / 8:30 Std".
+// "180 / 400 Seiten", "45% (135/300 Seiten)", "2:15 / 8:30 Std",
+// "45% (≈2:15 / 8:30 Std)" (Hörbuch im %-Modus).
 export function formatCurrentProgress(book: ParticipantBook): string {
   switch (book.format) {
     case "physical":
@@ -145,14 +199,19 @@ export function formatCurrentProgress(book: ParticipantBook): string {
       const pages = book.totalPages ? Math.round(((book.currentPercent ?? 0) / 100) * book.totalPages) : 0;
       return `${book.currentPercent}% (${pages}/${book.totalPages} Seiten)`;
     }
-    case "audiobook":
+    case "audiobook": {
+      if (isAudiobookPercent(book)) {
+        const minutes = book.totalMinutes ? Math.round(((book.currentPercent ?? 0) / 100) * book.totalMinutes) : 0;
+        return `${book.currentPercent}% (≈${formatHM(minutes)} / ${formatHM(book.totalMinutes ?? 0)} Std)`;
+      }
       return `${formatHM(book.currentMinutes ?? 0)} / ${formatHM(book.totalMinutes ?? 0)} Std`;
+    }
   }
 }
 
 // Anzeige des in DIESEM SPRINT gemachten Fortschritts (Delta), z.B. für das
 // Sprintende-Bild und die öffentliche Teilnehmerliste: "45 Seiten",
-// "20% (60 Seiten)", "1:30 Std".
+// "20% (60 Seiten)", "1:30 Std", "20% (≈1:42 Std)" (Hörbuch im %-Modus).
 export function formatDeltaProgress(book: ParticipantBook): string {
   switch (book.format) {
     case "physical": {
@@ -165,6 +224,11 @@ export function formatDeltaProgress(book: ParticipantBook): string {
       return `${deltaPercent}% (${deltaPages} Seiten)`;
     }
     case "audiobook": {
+      if (isAudiobookPercent(book)) {
+        const deltaPercent = Math.max(0, (book.currentPercent ?? 0) - (book.startPercent ?? 0));
+        const deltaMinutes = book.totalMinutes ? Math.round((deltaPercent / 100) * book.totalMinutes) : 0;
+        return `${deltaPercent}% (≈${formatHM(deltaMinutes)} Std)`;
+      }
       const deltaMinutes = Math.max(0, (book.currentMinutes ?? 0) - (book.startMinutes ?? 0));
       return `${formatHM(deltaMinutes)} Std`;
     }
@@ -185,6 +249,10 @@ export function formatGoal(book: ParticipantBook): string | null {
       return `${book.goalPercent - book.startPercent}% (bis ${book.goalPercent}%)`;
     }
     case "audiobook": {
+      if (isAudiobookPercent(book)) {
+        if (book.goalPercent === undefined || book.startPercent === undefined) return null;
+        return `${book.goalPercent - book.startPercent}% (bis ${book.goalPercent}%)`;
+      }
       if (book.goalMinutes === undefined || book.startMinutes === undefined) return null;
       return `${formatHM(book.goalMinutes - book.startMinutes)} Std (bis ${formatHM(book.goalMinutes)} Std)`;
     }
@@ -196,6 +264,7 @@ export function describeBookTotal(format: BookFormat, totalPages?: number, total
   if (format === "audiobook") return `${formatHM(totalMinutes ?? 0)} Std`;
   return `${totalPages ?? 0} Seiten`;
 }
+
 export function formatLabel(format: BookFormat): string {
   switch (format) {
     case "physical":
@@ -210,56 +279,61 @@ export function formatLabel(format: BookFormat): string {
 // Feld-Labels für die Modals, format-abhängig. Zentral hier statt in jedem
 // Modal-Builder dupliziert, da dieselbe Logik an vielen Stellen gebraucht wird
 // (Beitritt, Buchwechsel - jeweils neues & vorhandenes Buch).
-export function getCurrentFieldLabel(format: BookFormat): string {
+// `percentMode` ist nur für audiobook relevant (Std:Min vs. %-Eingabe).
+export function getCurrentFieldLabel(format: BookFormat, percentMode = false): string {
   switch (format) {
     case "physical":
       return "Aktuelle Seite";
     case "ebook":
       return "Aktueller Fortschritt in % (0-100)";
     case "audiobook":
-      return "Aktuelle Position (Std:Min, z.B. 2:30)";
+      return percentMode ? "Aktueller Fortschritt in % (0-100)" : "Aktuelle Position (Std:Min, z.B. 2:30)";
   }
 }
 
-export function getOldCurrentFieldLabel(format: BookFormat): string {
+export function getOldCurrentFieldLabel(format: BookFormat, percentMode = false): string {
   switch (format) {
     case "physical":
       return "Aktuelle Seite (bisheriges Buch)";
     case "ebook":
       return "Fortschritt % (bisheriges Buch)";
     case "audiobook":
-      return "Position (bisher, Std:Min)";
+      return percentMode ? "Fortschritt % (bisheriges Buch)" : "Position (bisher, Std:Min)";
   }
 }
 
+// Gesamtumfang wird bei Hörbüchern IMMER in Std:Min angegeben (unabhängig
+// vom Tracking-Modus) - nur der FORTSCHRITT wird ggf. in % erfasst.
 export function getTotalFieldLabel(format: BookFormat): string {
   return format === "audiobook" ? "Gesamtdauer (Std:Min, z.B. 8:30)" : "Gesamtseitenzahl";
 }
 
-export function getGoalFieldLabel(format: BookFormat): string {
+export function getGoalFieldLabel(format: BookFormat, percentMode = false): string {
   switch (format) {
     case "physical":
       return "Seitenziel: wie viele Seiten? (optional)";
     case "ebook":
       return "Zielfortschritt: wie viel %? (optional)";
     case "audiobook":
-      return "Zielzeit (Std:Min, optional)";
+      return percentMode ? "Zielfortschritt: wie viel %? (optional)" : "Zielzeit (Std:Min, optional)";
   }
 }
 
 /**
- * Parst einen Eingabewert (current/total/goal) format-abhängig:
- * physical/ebook -> Ganzzahl, audiobook -> "H:MM" in Minuten umgerechnet.
+ * Parst einen Eingabewert (current/goal) format-abhängig: physical/ebook ->
+ * Ganzzahl, audiobook -> "H:MM" in Minuten (oder Ganzzahl-Prozent, falls
+ * percentMode aktiv ist).
  */
-export function parseFormatValue(format: BookFormat, value: string): number | null {
-  if (format === "audiobook") return parseDurationHM(value);
+export function parseFormatValue(format: BookFormat, value: string, percentMode = false): number | null {
+  if (format === "audiobook" && !percentMode) return parseDurationHM(value);
   const parsed = Number.parseInt(value.trim(), 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 // Wie parseFormatValue, aber verlangt einen Wert > 0 (für Gesamtseitenzahl/
-// -dauer, wo 0 keinen Sinn ergibt).
-export function parseFormatValuePositive(format: BookFormat, value: string): number | null {
-  const parsed = parseFormatValue(format, value);
+// -dauer, wo 0 keinen Sinn ergibt). Für "total" ist percentMode nie relevant
+// (Gesamtdauer ist immer Std:Min), Default false ist daher hier korrekt.
+export function parseFormatValuePositive(format: BookFormat, value: string, percentMode = false): number | null {
+  const parsed = parseFormatValue(format, value, percentMode);
   return parsed !== null && parsed > 0 ? parsed : null;
 }

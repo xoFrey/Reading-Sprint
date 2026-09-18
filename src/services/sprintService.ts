@@ -36,6 +36,7 @@ export interface NewBookInput {
   current: number; // Seite | Prozent (0-100) | Minute
   total: number; // Gesamtseiten (physical/ebook) | Gesamtminuten (audiobook)
   goalDelta?: number; // "wie viel lesen/hören" - wird zu einem absoluten Ziel umgerechnet
+  audiobookPercentMode?: boolean; // nur für format="audiobook": Fortschritt über % statt Std:Min
 }
 
 // Baut ein ParticipantBook-Sub-Dokument aus den format-agnostischen Eingabedaten.
@@ -57,9 +58,16 @@ function buildParticipantBook(input: NewBookInput): ParticipantBook {
       break;
     case "audiobook":
       book.totalMinutes = input.total;
-      book.startMinutes = input.current;
-      book.currentMinutes = input.current;
-      if (input.goalDelta) book.goalMinutes = input.current + input.goalDelta;
+      book.audiobookPercentMode = input.audiobookPercentMode;
+      if (input.audiobookPercentMode) {
+        book.startPercent = input.current;
+        book.currentPercent = input.current;
+        if (input.goalDelta) book.goalPercent = input.current + input.goalDelta;
+      } else {
+        book.startMinutes = input.current;
+        book.currentMinutes = input.current;
+        if (input.goalDelta) book.goalMinutes = input.current + input.goalDelta;
+      }
       break;
   }
 
@@ -98,7 +106,14 @@ export async function joinSprint(
   guildId: string,
   input: NewBookInput
 ): Promise<ISprintParticipant> {
-  const book = await findOrCreateBook(userId, guildId, input.title, input.format, input.total);
+  const book = await findOrCreateBook(
+    userId,
+    guildId,
+    input.title,
+    input.format,
+    input.total,
+    input.audiobookPercentMode
+  );
 
   const initialBook = buildParticipantBook({ ...input, title: book.title });
 
@@ -121,7 +136,14 @@ export async function switchBook(
   guildId: string,
   input: NewBookInput
 ): Promise<ISprintParticipant | null> {
-  const book = await findOrCreateBook(userId, guildId, input.title, input.format, input.total);
+  const book = await findOrCreateBook(
+    userId,
+    guildId,
+    input.title,
+    input.format,
+    input.total,
+    input.audiobookPercentMode
+  );
 
   const newBook = buildParticipantBook({ ...input, title: book.title });
 
@@ -158,7 +180,11 @@ export async function updateBookProgress(
       book.currentPercent = newValue;
       break;
     case "audiobook":
-      book.currentMinutes = newValue;
+      if (book.audiobookPercentMode) {
+        book.currentPercent = newValue;
+      } else {
+        book.currentMinutes = newValue;
+      }
       break;
   }
 
@@ -171,7 +197,8 @@ export async function updateBookProgress(
       participant.guildId,
       book.title,
       book.format,
-      totalValue
+      totalValue,
+      book.audiobookPercentMode
     );
     await markBookFinished(libraryBook.id);
   }

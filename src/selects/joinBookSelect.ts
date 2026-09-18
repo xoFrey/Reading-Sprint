@@ -53,15 +53,17 @@ export async function execute(interaction: StringSelectMenuInteraction): Promise
     .setCustomId(buildCustomId(CustomId.MODAL_JOIN_EXISTING_BOOK, sprintId, bookId))
     .setTitle(Texts.bookSelect.modalTitleExisting);
 
+  const percentMode = book.audiobookPercentMode === true;
+
   const currentInput = new TextInputBuilder()
     .setCustomId("current")
-    .setLabel(getCurrentFieldLabel(book.format))
+    .setLabel(getCurrentFieldLabel(book.format, percentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
   const goalInput = new TextInputBuilder()
     .setCustomId("goal")
-    .setLabel(getGoalFieldLabel(book.format))
+    .setLabel(getGoalFieldLabel(book.format, percentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 

@@ -55,21 +55,24 @@ export async function execute(interaction: StringSelectMenuInteraction): Promise
     .setCustomId(buildCustomId(CustomId.MODAL_SWITCH_TO_EXISTING_BOOK, participantId, bookId))
     .setTitle(Texts.bookSelect.modalTitleExisting);
 
+  const oldPercentMode = oldBook.audiobookPercentMode === true;
+  const newPercentMode = book.audiobookPercentMode === true;
+
   const oldCurrentInput = new TextInputBuilder()
     .setCustomId("oldCurrent")
-    .setLabel(getOldCurrentFieldLabel(oldBook.format))
+    .setLabel(getOldCurrentFieldLabel(oldBook.format, oldPercentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
   const currentInput = new TextInputBuilder()
     .setCustomId("current")
-    .setLabel(getCurrentFieldLabel(book.format))
+    .setLabel(getCurrentFieldLabel(book.format, newPercentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
   const goalInput = new TextInputBuilder()
     .setCustomId("goal")
-    .setLabel(getGoalFieldLabel(book.format))
+    .setLabel(getGoalFieldLabel(book.format, newPercentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 

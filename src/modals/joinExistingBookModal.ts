@@ -20,23 +20,25 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   }
 
   const format = book.format;
+  const percentMode = book.audiobookPercentMode === true;
+  const isPercentInput = format === "ebook" || (format === "audiobook" && percentMode);
   const total = format === "audiobook" ? book.totalMinutes! : book.totalPages!;
 
-  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"));
+  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"), percentMode);
   const goalRaw = interaction.fields.getTextInputValue("goal");
-  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw) : null;
+  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw, percentMode) : null;
 
   if (current === null || (goalRaw && goalDelta === null)) {
     await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
     return;
   }
 
-  if (format === "ebook" && (current < 0 || current > 100)) {
+  if (isPercentInput && (current < 0 || current > 100)) {
     await interaction.reply({ content: Texts.join.invalidPercent, ephemeral: true });
     return;
   }
 
-  if (current > total) {
+  if (!isPercentInput && current > total) {
     await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
     return;
   }
@@ -53,6 +55,7 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     current,
     total,
     goalDelta: goalDelta ?? undefined,
+    audiobookPercentMode: format === "audiobook" ? percentMode : undefined,
   };
 
   let participant;
@@ -60,7 +63,7 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     // findOrCreateBook in joinSprint findet dieses Buch anhand des Titels
     // wieder (gleicher Nutzer, gleicher Server, unbeendet) - Titel/Umfang
     // müssen daher nicht erneut eingegeben werden.
-    participant = await joinSprint(sprintId, interaction.user.id, interaction.guildId!, input);
+    participant = await joinSprint(sprintId, interaction.user.id, sprint.guildId, input);
   } catch (error: any) {
     if (error?.code === 11000) {
       const existing = await SprintParticipant.findOne({ sprintId, userId: interaction.user.id });

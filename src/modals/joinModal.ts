@@ -11,26 +11,29 @@ import { SprintParticipant } from "../database/models/SprintParticipant";
 
 export async function execute(interaction: ModalSubmitInteraction): Promise<void> {
   const { args } = parseCustomId(interaction.customId);
-  const [sprintId, formatRaw] = args;
+  const [sprintId, formatRaw, percentFlag] = args;
   const format = formatRaw as BookFormat;
+  // Nur für Hörbücher relevant: "1" = Fortschritt wird über % erfasst statt Std:Min.
+  const percentMode = format === "audiobook" && percentFlag === "1";
+  const isPercentInput = format === "ebook" || percentMode;
 
   const title = interaction.fields.getTextInputValue("title").trim();
-  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"));
+  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"), percentMode);
   const total = parseFormatValuePositive(format, interaction.fields.getTextInputValue("total"));
   const goalRaw = interaction.fields.getTextInputValue("goal");
-  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw) : null;
+  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw, percentMode) : null;
 
   if (current === null || total === null || (goalRaw && goalDelta === null)) {
     await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
     return;
   }
 
-  if (format === "ebook" && (current < 0 || current > 100)) {
+  if (isPercentInput && (current < 0 || current > 100)) {
     await interaction.reply({ content: Texts.join.invalidPercent, ephemeral: true });
     return;
   }
 
-  if (current > total) {
+  if (!isPercentInput && current > total) {
     await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
     return;
   }
@@ -49,11 +52,15 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     current,
     total,
     goalDelta: goalDelta ?? undefined,
+    audiobookPercentMode: format === "audiobook" ? percentMode : undefined,
   };
 
   let participant;
   try {
-    participant = await joinSprint(sprintId, interaction.user.id, interaction.guildId!, input);
+    // sprint.guildId statt interaction.guildId, damit der Beitritt auch über
+    // einen aus einer DM geklickten Button funktionieren würde (dort gibt es
+    // keinen Server-Kontext in der Interaction).
+    participant = await joinSprint(sprintId, interaction.user.id, sprint.guildId, input);
   } catch (error: any) {
     // Doppelter Beitritt (z.B. durch Doppelklick oder abgelaufenes vorheriges
     // Interaction-Token) -> freundliche Meldung statt hartem Crash.

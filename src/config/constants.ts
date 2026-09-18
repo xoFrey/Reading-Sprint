@@ -32,6 +32,7 @@ export const CustomId = {
   SELECT_MANAGE_BOOK: "select_manage_book",
   SELECT_CANCEL_SCHEDULE: "select_cancel_schedule",
   SELECT_NEW_BOOK_FORMAT: "select_new_book_format",
+  SELECT_AUDIOBOOK_MODE: "select_audiobook_mode",
 
   MODAL_SCHEDULE: "modal_schedule",
   MODAL_JOIN: "modal_join",

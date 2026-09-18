@@ -32,11 +32,15 @@ export interface ParticipantBook {
   currentPercent?: number;
   goalPercent?: number;
 
-  // audiobook (alles in Minuten)
+  // audiobook (alles in Minuten) - ODER, falls audiobookPercentMode true ist,
+  // wird der Fortschritt stattdessen über die Prozent-Felder oben erfasst
+  // (praktisch, da viele Hörbuch-Apps eher % als Std:Min-Position anzeigen).
+  // totalMinutes bleibt in JEDEM Fall gesetzt (für die Std:Min-Anzeige).
   totalMinutes?: number;
   startMinutes?: number;
   currentMinutes?: number;
   goalMinutes?: number;
+  audiobookPercentMode?: boolean;
 
   isFinished: boolean;
 }

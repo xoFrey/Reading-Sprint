@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseFormatValue, parseFormatValuePositive } from "../services/bookProgress";
+import { parseFormatValue, parseFormatValuePositive, getProgressBounds } from "../services/bookProgress";
 import { Book } from "../database/models/Book";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook, updateBookProgress, switchBook, NewBookInput } from "../services/sprintService";
@@ -22,44 +22,41 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
   }
 
   const format = book.format;
+  // Beide Modi kommen bereits aus der DB (Bibliothek bzw. bisheriges Buch) -
+  // kein zusätzliches Auswahl-Flag im customId nötig.
+  const percentMode = book.audiobookPercentMode === true;
+  const oldPercentMode = oldBook.audiobookPercentMode === true;
+  const isPercentInput = format === "ebook" || (format === "audiobook" && percentMode);
   const total = format === "audiobook" ? book.totalMinutes! : book.totalPages!;
 
-  const oldCurrent = parseFormatValue(oldBook.format, interaction.fields.getTextInputValue("oldCurrent"));
-  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"));
+  const oldCurrent = parseFormatValue(
+    oldBook.format,
+    interaction.fields.getTextInputValue("oldCurrent"),
+    oldPercentMode
+  );
+  const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"), percentMode);
   const goalRaw = interaction.fields.getTextInputValue("goal");
-  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw) : null;
+  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw, percentMode) : null;
 
   if (current === null || (goalRaw && goalDelta === null)) {
     await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
     return;
   }
 
-  if (format === "ebook" && (current < 0 || current > 100)) {
+  if (isPercentInput && (current < 0 || current > 100)) {
     await interaction.reply({ content: Texts.join.invalidPercent, ephemeral: true });
     return;
   }
 
-  if (current > total) {
+  if (!isPercentInput && current > total) {
     await interaction.reply({ content: Texts.join.currentPageExceedsTotal, ephemeral: true });
     return;
   }
 
   // Erst den Fortschritt im BISHERIGEN Buch speichern (gleiche Validierung wie überall).
-  const oldTotal = oldBook.format === "audiobook" ? oldBook.totalMinutes : oldBook.totalPages;
-  const oldStart =
-    oldBook.format === "audiobook"
-      ? oldBook.startMinutes
-      : oldBook.format === "ebook"
-        ? oldBook.startPercent
-        : oldBook.startPage;
+  const oldBounds = getProgressBounds(oldBook);
 
-  if (
-    oldCurrent === null ||
-    oldStart === undefined ||
-    oldTotal === undefined ||
-    oldCurrent < oldStart ||
-    oldCurrent > oldTotal
-  ) {
+  if (oldCurrent === null || !oldBounds || oldCurrent < oldBounds.start || oldCurrent > oldBounds.max) {
     await interaction.reply({ content: Texts.participant.updatePageInvalid, ephemeral: true });
     return;
   }
@@ -71,12 +68,13 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     current,
     total,
     goalDelta: goalDelta ?? undefined,
+    audiobookPercentMode: format === "audiobook" ? percentMode : undefined,
   };
 
   const updatedParticipant = await switchBook(
     participantId,
     interaction.user.id,
-    interaction.guildId!,
+    participant.guildId,
     input
   );
 

@@ -45,6 +45,7 @@ const ParticipantBookSchema = new Schema<ParticipantBook>(
     startMinutes: { type: Number },
     currentMinutes: { type: Number },
     goalMinutes: { type: Number },
+    audiobookPercentMode: { type: Boolean },
 
     isFinished: { type: Boolean, default: false },
   },

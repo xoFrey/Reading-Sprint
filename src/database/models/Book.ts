@@ -15,6 +15,7 @@ export interface IBook extends Document {
   totalPages?: number;
   // audiobook
   totalMinutes?: number;
+  audiobookPercentMode?: boolean;
 
   isFinished: boolean;
   finishedAt?: Date;
@@ -33,6 +34,7 @@ const BookSchema = new Schema<IBook>(
 
     totalPages: { type: Number },
     totalMinutes: { type: Number },
+    audiobookPercentMode: { type: Boolean },
 
     isFinished: { type: Boolean, default: false },
     finishedAt: { type: Date },

@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseFormatValue } from "../services/bookProgress";
+import { parseFormatValue, getProgressBounds } from "../services/bookProgress";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook, updateBookProgress } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
@@ -23,25 +23,19 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
-  const newValue = parseFormatValue(currentBook.format, interaction.fields.getTextInputValue("current"));
-
-  const start =
-    currentBook.format === "audiobook"
-      ? currentBook.startMinutes
-      : currentBook.format === "ebook"
-        ? currentBook.startPercent
-        : currentBook.startPage;
-  const total = currentBook.format === "audiobook" ? currentBook.totalMinutes : currentBook.totalPages;
+  const percentMode = currentBook.audiobookPercentMode === true;
+  const newValue = parseFormatValue(
+    currentBook.format,
+    interaction.fields.getTextInputValue("current"),
+    percentMode
+  );
 
   // Wert muss zwischen dem Startwert (kein Rückschritt) und dem Gesamtumfang
-  // liegen (kein "999999 Seiten gelesen"-Cheat).
-  if (
-    newValue === null ||
-    start === undefined ||
-    total === undefined ||
-    newValue < start ||
-    newValue > total
-  ) {
+  // liegen (kein "999999 Seiten gelesen"-Cheat). getProgressBounds kennt die
+  // richtige Einheit (Seite/Prozent/Minute) automatisch.
+  const bounds = getProgressBounds(currentBook);
+
+  if (newValue === null || !bounds || newValue < bounds.start || newValue > bounds.max) {
     await interaction.reply({ content: Texts.participant.updatePageInvalid, ephemeral: true });
     return;
   }

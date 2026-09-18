@@ -35,7 +35,11 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const valueInput = new TextInputBuilder()
     .setCustomId("current")
-    .setLabel(currentBook ? getCurrentFieldLabel(currentBook.format) : Texts.participant.updatePageLabel)
+    .setLabel(
+      currentBook
+        ? getCurrentFieldLabel(currentBook.format, currentBook.audiobookPercentMode === true)
+        : Texts.participant.updatePageLabel
+    )
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 

@@ -24,7 +24,10 @@ export function buildJoinEmbedParticipants(participants: ISprintParticipant[]): 
           progressLabel = `ab ${currentBook.startPercent}%`;
           break;
         case "audiobook":
-          progressLabel = `ab ${formatHM(currentBook.startMinutes ?? 0)} Std`;
+          progressLabel =
+            currentBook.audiobookPercentMode === true
+              ? `ab ${currentBook.startPercent}%`
+              : `ab ${formatHM(currentBook.startMinutes ?? 0)} Std`;
           break;
       }
     }

@@ -84,7 +84,13 @@ export const Texts = {
     ebookLabel: "📱 Ebook",
     ebookDescription: "Fortschritt in Prozent",
     audiobookLabel: "🎧 Hörbuch",
-    audiobookDescription: "Fortschritt in Std:Min",
+    audiobookDescription: "Fortschritt in Std:Min oder %",
+    audiobookModePrompt: "🎧 Wie möchtest du deinen Fortschritt eintragen?",
+    audiobookModePlaceholder: "Eingabe-Art auswählen...",
+    audiobookModeTimeLabel: "⏱️ Std:Min",
+    audiobookModeTimeDescription: "z.B. 2:30 (genaue Position)",
+    audiobookModePercentLabel: "💯 Prozent",
+    audiobookModePercentDescription: "z.B. 45% (praktisch bei Audible & Co.)",
   },
 
   bookSelect: {
