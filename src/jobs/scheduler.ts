@@ -4,10 +4,12 @@ import { Sprint } from "../database/models/Sprint";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { Texts } from "../config/texts";
 import { GRACE_PERIOD_MINUTES, MESSAGE_CLEANUP_DELAY_MINUTES, CustomId, buildCustomId } from "../config/constants";
-import { startSprint, startGracePeriod, finalizeSprint } from "../services/sprintService";
+import { startSprint, startGracePeriod, finalizeSprint, joinSprint, NewBookInput } from "../services/sprintService";
+import { getUnfinishedBooks } from "../services/bookService";
 import { buildJoinEmbed } from "../embeds/joinEmbed";
 import { buildSprintEndImage, buildResultsPaginationRow, getTotalResultPages } from "../services/sprintEndImageService";
 import { refreshPanel } from "../services/panelService";
+import { refreshJoinMessage } from "../services/joinMessageService";
 import { getRoleMention, getResultsChannelId } from "../utils/guildConfig";
 
 const CHECK_INTERVAL_MS = 60_000; // jede Minute prüfen reicht für Erinnerungen auf Minutenbasis
@@ -89,7 +91,12 @@ async function checkScheduledStarts(client: Client): Promise<void> {
     // "Lesesprinter"-Rolle, falls konfiguriert.
     const userMentions = scheduled.registeredUsers.map((userId) => `<@${userId}>`).join(" ");
     const roleMention = getRoleMention();
-    const content = [roleMention, userMentions].filter(Boolean).join(" ") || undefined;
+    const mentionsLine = [roleMention, userMentions].filter(Boolean).join(" ");
+    const autoJoinNote =
+      scheduled.registeredUsers.length > 0
+        ? '📋 Vorregistrierte wurden automatisch mit ihrem letzten Buch eingetragen - falscher Stand? Über "Mein Panel" änderbar!'
+        : "";
+    const content = [mentionsLine, autoJoinNote].filter(Boolean).join("\n") || undefined;
 
     const sentMessage = await channel.send({ content, embeds: [embed], components });
 
@@ -106,6 +113,58 @@ async function checkScheduledStarts(client: Client): Promise<void> {
     await scheduled.save();
 
     await refreshPanel(client, scheduled.guildId);
+    await autoJoinRegisteredUsers(client, sprint.id, scheduled.guildId, scheduled.registeredUsers);
+  }
+}
+
+/**
+ * Trägt vorregistrierte Nutzer automatisch in den gerade gestarteten Sprint
+ * ein - mit ihrem zuletzt gelesenen Buch und dessen letztem bekannten Stand
+ * (lastKnownProgress, siehe bookProgress.ts). Wer den Stand ändern oder ein
+ * anderes Buch wählen möchte, macht das über "Mein Panel" (📋-Button neben
+ * "Beitreten") - dort gibt es bereits "✏️ Fortschritt aktualisieren" und
+ * "📖 Buch wechseln", dafür ist kein neuer UI-Weg nötig.
+ *
+ * Wer noch kein Buch in der Bibliothek hat, wird übersprungen (kann nichts
+ * sinnvoll vorausgefüllt werden) - die Person bleibt gepingt und tritt wie
+ * gewohnt manuell über "Beitreten" bei.
+ */
+async function autoJoinRegisteredUsers(
+  client: Client,
+  sprintId: string,
+  guildId: string,
+  registeredUsers: string[]
+): Promise<void> {
+  let joinedAny = false;
+
+  for (const userId of registeredUsers) {
+    const unfinishedBooks = await getUnfinishedBooks(userId, guildId);
+    const lastBook = unfinishedBooks[0]; // neueste zuerst sortiert (siehe bookService.ts)
+    if (!lastBook) continue;
+
+    const total = lastBook.format === "audiobook" ? lastBook.totalMinutes : lastBook.totalPages;
+    if (total === undefined) continue;
+
+    const input: NewBookInput = {
+      title: lastBook.title,
+      format: lastBook.format,
+      current: lastBook.lastKnownProgress ?? 0,
+      total,
+      audiobookPercentMode: lastBook.audiobookPercentMode,
+    };
+
+    try {
+      await joinSprint(sprintId, userId, guildId, input);
+      joinedAny = true;
+    } catch {
+      // Doppelter Beitritt (z.B. schon manuell beigetreten, bevor der
+      // Auto-Join lief) - einfach überspringen, kein Grund zum Abbrechen.
+      continue;
+    }
+  }
+
+  if (joinedAny) {
+    await refreshJoinMessage(client, sprintId);
   }
 }
 
