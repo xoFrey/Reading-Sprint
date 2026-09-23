@@ -300,6 +300,22 @@ export function getCurrentFieldLabel(format: BookFormat, percentMode = false): s
   }
 }
 
+// Label für "Startwert korrigieren" - bewusst andere Formulierung als
+// getCurrentFieldLabel, damit klar ist: das setzt NICHT nur den aktuellen
+// Stand, sondern auch den Startpunkt (siehe sprintService.fixBookStart).
+export function getFixStartFieldLabel(format: BookFormat, percentMode = false): string {
+  switch (format) {
+    case "physical":
+      return "Neue Startseite (setzt auch aktuelle Seite)";
+    case "ebook":
+      return "Neuer Start-% (setzt auch aktuellen %)";
+    case "audiobook":
+      return percentMode
+        ? "Neuer Start-% (setzt auch aktuellen %)"
+        : "Neue Startzeit (setzt auch aktuelle Zeit)";
+  }
+}
+
 export function getOldCurrentFieldLabel(format: BookFormat, percentMode = false): string {
   switch (format) {
     case "physical":

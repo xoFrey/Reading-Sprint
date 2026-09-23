@@ -15,6 +15,7 @@ export const CustomId = {
 
   PARTICIPANT_SWITCH_BOOK: "participant_switch_book",
   PARTICIPANT_UPDATE_PAGE: "participant_update_page",
+  PARTICIPANT_FIX_START: "participant_fix_start",
   PARTICIPANT_PAUSE: "participant_pause",
   PARTICIPANT_RESUME: "participant_resume",
   PARTICIPANT_LEAVE: "participant_leave",
@@ -40,6 +41,7 @@ export const CustomId = {
   MODAL_SWITCH_BOOK: "modal_switch_book",
   MODAL_SWITCH_TO_EXISTING_BOOK: "modal_switch_to_existing_book",
   MODAL_UPDATE_PAGE: "modal_update_page",
+  MODAL_FIX_START: "modal_fix_start",
   MODAL_EDIT_BOOK: "modal_edit_book",
 } as const;
 

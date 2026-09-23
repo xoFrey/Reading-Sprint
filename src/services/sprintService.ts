@@ -224,6 +224,57 @@ export async function updateBookProgress(
 }
 
 /**
+ * Korrigiert den STARTWERT des aktuell gelesenen Buchs (nicht nur den
+ * aktuellen Stand wie updateBookProgress) - setzt beide auf denselben neuen
+ * Wert. Wichtig, falls z.B. bei Auto-Join (vorregistrierte Nutzer, siehe
+ * jobs/scheduler.ts) der vorausgefüllte Startwert nicht mehr stimmt, weil
+ * zwischen den Sprints außerhalb weitergelesen wurde: ohne diese Korrektur
+ * würde die Differenz fälschlich als "in diesem Sprint gelesen" gezählt,
+ * obwohl sie vor Sprintbeginn entstanden ist.
+ */
+export async function fixBookStart(
+  participant: ISprintParticipant,
+  newValue: number
+): Promise<void> {
+  const book = getCurrentBook(participant);
+  if (!book) return;
+
+  switch (book.format) {
+    case "physical":
+      book.startPage = newValue;
+      book.currentPage = newValue;
+      break;
+    case "ebook":
+      book.startPercent = newValue;
+      book.currentPercent = newValue;
+      break;
+    case "audiobook":
+      if (book.audiobookPercentMode) {
+        book.startPercent = newValue;
+        book.currentPercent = newValue;
+      } else {
+        book.startMinutes = newValue;
+        book.currentMinutes = newValue;
+      }
+      break;
+  }
+
+  // Bibliotheks-Eintrag ebenfalls auf den korrigierten Stand aktualisieren.
+  const totalValue = book.format === "audiobook" ? book.totalMinutes! : book.totalPages!;
+  await findOrCreateBook(
+    participant.userId,
+    participant.guildId,
+    book.title,
+    book.format,
+    totalValue,
+    book.audiobookPercentMode,
+    newValue
+  );
+
+  await participant.save();
+}
+
+/**
  * Ändert den Status eines Teilnehmers und pflegt dabei das Pause-Tracking:
  * - Pause: merkt sich den Zeitpunkt (pausedAt)
  * - Weiter: rechnet die abgelaufene Pausenzeit in totalPausedMs ein

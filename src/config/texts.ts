@@ -126,6 +126,12 @@ export const Texts = {
     updatePageSuccess: "✅ Fortschritt aktualisiert.",
     updatePageInvalid:
       "❌ Ungültiger Fortschritt. Er muss zwischen dem Startwert und dem Gesamtumfang liegen.",
+    fixStartButtonLabel: "Startwert korrigieren",
+    fixStartModalTitle: "Startwert korrigieren",
+    fixStartHint:
+      "Setzt Start- UND aktuellen Wert gleichzeitig neu (z.B. wenn du zwischen den Sprints weitergelesen hast) - danach zeigt \"gelesen in diesem Sprint\" wieder 0, bis du wirklich weiterliest.",
+    fixStartSuccess: "✅ Startwert korrigiert. \"Gelesen in diesem Sprint\" steht jetzt wieder bei 0.",
+    fixStartInvalid: "❌ Ungültiger Wert. Er muss zwischen 0 und dem Gesamtumfang liegen.",
   },
 
   sprintEnd: {

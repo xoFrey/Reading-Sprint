@@ -47,6 +47,11 @@ export function buildParticipantPanel(
       .setEmoji("✏️")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
+      .setCustomId(buildCustomId(CustomId.PARTICIPANT_FIX_START, participant.id))
+      .setLabel("Startwert korrigieren")
+      .setEmoji("🔧")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId(buildCustomId(CustomId.PARTICIPANT_SWITCH_BOOK, participant.id))
       .setLabel("Buch wechseln")
       .setEmoji("📖")

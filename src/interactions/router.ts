@@ -13,6 +13,7 @@ import * as scheduleRegisterButton from "../buttons/scheduleRegisterButton";
 import * as panelCancelScheduleButton from "../buttons/panelCancelScheduleButton";
 import * as switchBookButton from "../buttons/switchBookButton";
 import * as updatePageButton from "../buttons/updatePageButton";
+import * as fixStartButton from "../buttons/fixStartButton";
 import * as graceUpdatePageButton from "../buttons/graceUpdatePageButton";
 import * as sprintResultsPageButton from "../buttons/sprintResultsPageButton";
 import * as joinParticipantsPageButton from "../buttons/joinParticipantsPageButton";
@@ -32,6 +33,7 @@ import * as joinExistingBookModal from "../modals/joinExistingBookModal";
 import * as switchBookModal from "../modals/switchBookModal";
 import * as switchToExistingBookModal from "../modals/switchToExistingBookModal";
 import * as updatePageModal from "../modals/updatePageModal";
+import * as fixStartModal from "../modals/fixStartModal";
 import * as editBookModal from "../modals/editBookModal";
 
 import * as joinBookSelect from "../selects/joinBookSelect";
@@ -57,6 +59,7 @@ const buttonHandlers: Record<string, (interaction: ButtonInteraction) => Promise
   [CustomId.SCHEDULE_REGISTER]: scheduleRegisterButton.execute,
   [CustomId.PARTICIPANT_SWITCH_BOOK]: switchBookButton.execute,
   [CustomId.PARTICIPANT_UPDATE_PAGE]: updatePageButton.execute,
+  [CustomId.PARTICIPANT_FIX_START]: fixStartButton.execute,
   [CustomId.PARTICIPANT_PAUSE]: executePause,
   [CustomId.PARTICIPANT_RESUME]: executeResume,
   [CustomId.PARTICIPANT_LEAVE]: executeLeave,
@@ -75,6 +78,7 @@ const modalHandlers: Record<string, (interaction: ModalSubmitInteraction) => Pro
   [CustomId.MODAL_SWITCH_BOOK]: switchBookModal.execute,
   [CustomId.MODAL_SWITCH_TO_EXISTING_BOOK]: switchToExistingBookModal.execute,
   [CustomId.MODAL_UPDATE_PAGE]: updatePageModal.execute,
+  [CustomId.MODAL_FIX_START]: fixStartModal.execute,
   [CustomId.MODAL_EDIT_BOOK]: editBookModal.execute,
 };
 
