@@ -35,26 +35,36 @@ export interface NewBookInput {
   format: BookFormat;
   current: number; // Seite | Prozent (0-100) | Minute
   total: number; // Gesamtseiten (physical/ebook) | Gesamtminuten (audiobook)
-  goalDelta?: number; // "wie viel lesen/hören" - wird zu einem absoluten Ziel umgerechnet
+  goalDelta?: number; // "wie viel lesen/hören" - wird zum Startwert addiert
+  goalAbsolute?: number; // "@Zielwert" - wird direkt als Ziel übernommen (Vorrang vor goalDelta)
   audiobookPercentMode?: boolean; // nur für format="audiobook": Fortschritt über % statt Std:Min
+}
+
+// Berechnet den absoluten Zielwert aus goalAbsolute (Vorrang) oder goalDelta
+// (relativ zum Startwert). undefined, falls kein Ziel gesetzt wurde.
+function resolveGoal(input: NewBookInput): number | undefined {
+  if (input.goalAbsolute !== undefined) return input.goalAbsolute;
+  if (input.goalDelta) return input.current + input.goalDelta;
+  return undefined;
 }
 
 // Baut ein ParticipantBook-Sub-Dokument aus den format-agnostischen Eingabedaten.
 function buildParticipantBook(input: NewBookInput): ParticipantBook {
   const book: ParticipantBook = { title: input.title, format: input.format, isFinished: false };
+  const goal = resolveGoal(input);
 
   switch (input.format) {
     case "physical":
       book.totalPages = input.total;
       book.startPage = input.current;
       book.currentPage = input.current;
-      if (input.goalDelta) book.goalPage = input.current + input.goalDelta;
+      if (goal !== undefined) book.goalPage = goal;
       break;
     case "ebook":
       book.totalPages = input.total;
       book.startPercent = input.current;
       book.currentPercent = input.current;
-      if (input.goalDelta) book.goalPercent = input.current + input.goalDelta;
+      if (goal !== undefined) book.goalPercent = goal;
       break;
     case "audiobook":
       book.totalMinutes = input.total;
@@ -62,11 +72,11 @@ function buildParticipantBook(input: NewBookInput): ParticipantBook {
       if (input.audiobookPercentMode) {
         book.startPercent = input.current;
         book.currentPercent = input.current;
-        if (input.goalDelta) book.goalPercent = input.current + input.goalDelta;
+        if (goal !== undefined) book.goalPercent = goal;
       } else {
         book.startMinutes = input.current;
         book.currentMinutes = input.current;
-        if (input.goalDelta) book.goalMinutes = input.current + input.goalDelta;
+        if (goal !== undefined) book.goalMinutes = goal;
       }
       break;
   }
@@ -112,7 +122,8 @@ export async function joinSprint(
     input.title,
     input.format,
     input.total,
-    input.audiobookPercentMode
+    input.audiobookPercentMode,
+    input.current
   );
 
   const initialBook = buildParticipantBook({ ...input, title: book.title });
@@ -142,7 +153,8 @@ export async function switchBook(
     input.title,
     input.format,
     input.total,
-    input.audiobookPercentMode
+    input.audiobookPercentMode,
+    input.current
   );
 
   const newBook = buildParticipantBook({ ...input, title: book.title });
@@ -188,18 +200,23 @@ export async function updateBookProgress(
       break;
   }
 
+  // Bibliotheks-Eintrag IMMER mit dem neuen Stand aktualisieren (nicht nur
+  // beim Fertigstellen), damit "aktuelle Seite" beim nächsten Sprint mit
+  // diesem Buch vorausgefüllt werden kann (siehe joinBookSelect.ts).
+  const totalValue = book.format === "audiobook" ? book.totalMinutes! : book.totalPages!;
+  const libraryBook = await findOrCreateBook(
+    participant.userId,
+    participant.guildId,
+    book.title,
+    book.format,
+    totalValue,
+    book.audiobookPercentMode,
+    newValue
+  );
+
   if (isBookComplete(book) && !book.isFinished) {
     book.isFinished = true;
     // Buch auch in der persönlichen Bibliothek als fertig markieren.
-    const totalValue = book.format === "audiobook" ? book.totalMinutes! : book.totalPages!;
-    const libraryBook = await findOrCreateBook(
-      participant.userId,
-      participant.guildId,
-      book.title,
-      book.format,
-      totalValue,
-      book.audiobookPercentMode
-    );
     await markBookFinished(libraryBook.id);
   }
 

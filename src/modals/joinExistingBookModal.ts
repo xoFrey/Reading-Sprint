@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseFormatValue, parseFormatValuePositive } from "../services/bookProgress";
+import { parseFormatValue, parseGoalValue } from "../services/bookProgress";
 import { Book } from "../database/models/Book";
 import { Sprint } from "../database/models/Sprint";
 import { SprintParticipant } from "../database/models/SprintParticipant";
@@ -26,9 +26,9 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
 
   const current = parseFormatValue(format, interaction.fields.getTextInputValue("current"), percentMode);
   const goalRaw = interaction.fields.getTextInputValue("goal");
-  const goalDelta = goalRaw ? parseFormatValuePositive(format, goalRaw, percentMode) : null;
+  const parsedGoal = parseGoalValue(format, goalRaw, percentMode);
 
-  if (current === null || (goalRaw && goalDelta === null)) {
+  if (current === null || parsedGoal === null) {
     await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
     return;
   }
@@ -54,7 +54,8 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     format,
     current,
     total,
-    goalDelta: goalDelta ?? undefined,
+    goalDelta: parsedGoal.delta,
+    goalAbsolute: parsedGoal.absolute,
     audiobookPercentMode: format === "audiobook" ? percentMode : undefined,
   };
 

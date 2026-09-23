@@ -27,6 +27,11 @@ export async function getUnfinishedBooks(userId: string, guildId: string): Promi
  * @param audiobookPercentMode nur relevant für format="audiobook": Fortschritt
  *   wird über % statt Std:Min erfasst (z.B. weil die Hörbuch-App nur %
  *   Fortschritt zeigt, keine genaue Position)
+ * @param lastKnownProgress zuletzt bekannter Fortschritt (Seite/Prozent/
+ *   Minute) - wird gespeichert, damit das "aktuelle Seite"-Feld beim
+ *   nächsten Sprint mit diesem Buch vorausgefüllt werden kann. Wird nur
+ *   gesetzt, wenn explizit übergeben (undefined lässt den bisherigen Wert
+ *   unangetastet).
  */
 export async function findOrCreateBook(
   userId: string,
@@ -34,7 +39,8 @@ export async function findOrCreateBook(
   title: string,
   format: BookFormat,
   totalValue: number,
-  audiobookPercentMode?: boolean
+  audiobookPercentMode?: boolean,
+  lastKnownProgress?: number
 ): Promise<IBook> {
   const existing = await Book.findOne({
     userId,
@@ -54,6 +60,7 @@ export async function findOrCreateBook(
       existing.totalPages = totalValue;
       existing.totalMinutes = undefined;
     }
+    if (lastKnownProgress !== undefined) existing.lastKnownProgress = lastKnownProgress;
     return existing;
   }
 
@@ -65,6 +72,7 @@ export async function findOrCreateBook(
     totalPages: format === "audiobook" ? undefined : totalValue,
     totalMinutes: format === "audiobook" ? totalValue : undefined,
     audiobookPercentMode: format === "audiobook" ? audiobookPercentMode : undefined,
+    lastKnownProgress,
   });
 }
 

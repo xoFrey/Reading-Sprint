@@ -9,7 +9,12 @@ import {
 import { CustomId, buildCustomId, parseCustomId, NEW_BOOK_SELECT_VALUE } from "../config/constants";
 import { Texts } from "../config/texts";
 import { Book } from "../database/models/Book";
-import { getCurrentFieldLabel, getGoalFieldLabel } from "../services/bookProgress";
+import {
+  getCurrentFieldLabel,
+  getGoalFieldLabel,
+  getGoalFieldPlaceholder,
+  formatValueForInput,
+} from "../services/bookProgress";
 
 /**
  * Reagiert auf die Buchauswahl aus buttons/joinButton.ts.
@@ -61,9 +66,16 @@ export async function execute(interaction: StringSelectMenuInteraction): Promise
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
+  // Letzten bekannten Stand vorausfüllen (z.B. Seite 239 vom letzten Sprint
+  // mit diesem Buch) - bleibt änderbar, ist nur ein Vorschlag.
+  if (book.lastKnownProgress !== undefined) {
+    currentInput.setValue(formatValueForInput(book.format, book.lastKnownProgress, percentMode));
+  }
+
   const goalInput = new TextInputBuilder()
     .setCustomId("goal")
     .setLabel(getGoalFieldLabel(book.format, percentMode))
+    .setPlaceholder(getGoalFieldPlaceholder(book.format, percentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 

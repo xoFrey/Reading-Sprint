@@ -17,6 +17,11 @@ export interface IBook extends Document {
   totalMinutes?: number;
   audiobookPercentMode?: boolean;
 
+  // Zuletzt bekannter Fortschritt (Seite/Prozent/Minute, je nach Format) -
+  // wird bei jedem "Fortschritt aktualisieren" mitgespeichert, damit das
+  // Feld beim nächsten Sprint mit diesem Buch vorausgefüllt werden kann.
+  lastKnownProgress?: number;
+
   isFinished: boolean;
   finishedAt?: Date;
 
@@ -35,6 +40,7 @@ const BookSchema = new Schema<IBook>(
     totalPages: { type: Number },
     totalMinutes: { type: Number },
     audiobookPercentMode: { type: Boolean },
+    lastKnownProgress: { type: Number },
 
     isFinished: { type: Boolean, default: false },
     finishedAt: { type: Date },

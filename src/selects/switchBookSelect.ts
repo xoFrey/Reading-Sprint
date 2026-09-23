@@ -11,7 +11,14 @@ import { Texts } from "../config/texts";
 import { Book } from "../database/models/Book";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook } from "../services/sprintService";
-import { getCurrentFieldLabel, getGoalFieldLabel, getOldCurrentFieldLabel } from "../services/bookProgress";
+import {
+  getCurrentFieldLabel,
+  getGoalFieldLabel,
+  getGoalFieldPlaceholder,
+  getOldCurrentFieldLabel,
+  formatValueForInput,
+  getCurrentValue,
+} from "../services/bookProgress";
 
 /**
  * Reagiert auf die Buchauswahl aus buttons/switchBookButton.ts.
@@ -64,15 +71,29 @@ export async function execute(interaction: StringSelectMenuInteraction): Promise
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
+  // Vorausfüllen mit dem zuletzt eingetragenen Stand des BISHERIGEN Buchs -
+  // meistens hat sich seitdem ja nichts geändert, spart in dem Fall Tippen.
+  const oldCurrentValue = getCurrentValue(oldBook);
+  if (oldCurrentValue !== undefined) {
+    oldCurrentInput.setValue(formatValueForInput(oldBook.format, oldCurrentValue, oldPercentMode));
+  }
+
   const currentInput = new TextInputBuilder()
     .setCustomId("current")
     .setLabel(getCurrentFieldLabel(book.format, newPercentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
+  // Letzten bekannten Stand des NEUEN (gewählten) Buchs vorausfüllen, z.B.
+  // Seite 239 vom letzten Sprint mit diesem Buch - bleibt änderbar.
+  if (book.lastKnownProgress !== undefined) {
+    currentInput.setValue(formatValueForInput(book.format, book.lastKnownProgress, newPercentMode));
+  }
+
   const goalInput = new TextInputBuilder()
     .setCustomId("goal")
     .setLabel(getGoalFieldLabel(book.format, newPercentMode))
+    .setPlaceholder(getGoalFieldPlaceholder(book.format, newPercentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 

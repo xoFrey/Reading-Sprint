@@ -14,7 +14,10 @@ import {
   getCurrentFieldLabel,
   getTotalFieldLabel,
   getGoalFieldLabel,
+  getGoalFieldPlaceholder,
   getOldCurrentFieldLabel,
+  getCurrentValue,
+  formatValueForInput,
 } from "../services/bookProgress";
 
 /**
@@ -56,6 +59,7 @@ export async function showNewBookModal(
   const goalInput = new TextInputBuilder()
     .setCustomId("goal")
     .setLabel(getGoalFieldLabel(format, percentMode))
+    .setPlaceholder(getGoalFieldPlaceholder(format, percentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 
@@ -91,6 +95,13 @@ export async function showNewBookModal(
     .setLabel(getOldCurrentFieldLabel(oldFormat, oldPercentMode))
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
+
+  // Vorausfüllen mit dem zuletzt eingetragenen Stand des BISHERIGEN Buchs -
+  // meistens hat sich seitdem ja nichts geändert, spart in dem Fall Tippen.
+  const oldCurrentValue = oldBook ? getCurrentValue(oldBook) : undefined;
+  if (oldCurrentValue !== undefined) {
+    oldCurrentInput.setValue(formatValueForInput(oldFormat, oldCurrentValue, oldPercentMode));
+  }
 
   const modal = new ModalBuilder()
     .setCustomId(buildCustomId(CustomId.MODAL_SWITCH_BOOK, id, format, percentFlag))

@@ -13,6 +13,15 @@ function isAudiobookPercent(book: Pick<ParticipantBook, "format" | "audiobookPer
   return book.format === "audiobook" && book.audiobookPercentMode === true;
 }
 
+// Liefert den aktuellen Rohwert eines Buchs (Seite/Prozent/Minute, je nach
+// Format), z.B. um ihn beim Buchwechsel als Vorschlag für "wo aufgehört"
+// vorauszufüllen. undefined, falls (noch) kein Fortschritt gesetzt ist.
+export function getCurrentValue(book: ParticipantBook): number | undefined {
+  if (book.format === "physical") return book.currentPage;
+  if (book.format === "ebook") return book.currentPercent;
+  return isAudiobookPercent(book) ? book.currentPercent : book.currentMinutes;
+}
+
 // Liefert Start- und Maximalwert für die Fortschritts-Validierung, in der
 // jeweils passenden Einheit (Seite/Prozent/Minute). Zentral hier, weil sonst
 // an mehreren Stellen (Buchwechsel, "Seite aktualisieren") dieselbe
@@ -308,15 +317,59 @@ export function getTotalFieldLabel(format: BookFormat): string {
   return format === "audiobook" ? "Gesamtdauer (Std:Min, z.B. 8:30)" : "Gesamtseitenzahl";
 }
 
+// Kurzform "Anzahl" vs. "@Zielwert" - dieselbe Beschriftung für alle Formate,
+// da das @-Präfix-Muster überall gleich funktioniert.
 export function getGoalFieldLabel(format: BookFormat, percentMode = false): string {
   switch (format) {
     case "physical":
-      return "Seitenziel: wie viele Seiten? (optional)";
+      return "Ziel: Anzahl Seiten oder @Zielseite";
     case "ebook":
-      return "Zielfortschritt: wie viel %? (optional)";
+      return "Ziel: Anzahl % oder @Ziel-%";
     case "audiobook":
-      return percentMode ? "Zielfortschritt: wie viel %? (optional)" : "Zielzeit (Std:Min, optional)";
+      return percentMode ? "Ziel: Anzahl % oder @Ziel-%" : "Ziel: Dauer oder @Zielzeit (Std:Min)";
   }
+}
+
+// Platzhaltertext fürs Ziel-Feld, zeigt beide Eingabe-Varianten als Beispiel.
+export function getGoalFieldPlaceholder(format: BookFormat, percentMode = false): string {
+  if (format === "audiobook" && !percentMode) return "z.B. 1:30 oder @6:00";
+  return "z.B. 50 oder @300";
+}
+
+export interface ParsedGoal {
+  delta?: number; // "wie viel lesen/hören" - wird zum Startwert addiert
+  absolute?: number; // "@Zielwert" - wird direkt als Ziel übernommen
+}
+
+/**
+ * Parst die Ziel-Eingabe. Ein führendes "@" bedeutet "das ist der absolute
+ * Zielwert" (z.B. "@300" = Zielseite 300), ohne "@" wird die Zahl als
+ * Anzahl/Delta interpretiert (z.B. "50" = 50 Seiten lesen, ausgehend vom
+ * aktuellen Stand). Gibt null zurück bei ungültiger Eingabe.
+ */
+export function parseGoalValue(format: BookFormat, rawValue: string, percentMode = false): ParsedGoal | null {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return {};
+
+  if (trimmed.startsWith("@")) {
+    const absolute = parseFormatValue(format, trimmed.slice(1), percentMode);
+    if (absolute === null) return null;
+    return { absolute };
+  }
+
+  const delta = parseFormatValuePositive(format, trimmed, percentMode);
+  if (delta === null) return null;
+  return { delta };
+}
+
+/**
+ * Formatiert einen gespeicherten Rohwert (Seite/Prozent/Minute) als String
+ * fürs Vorausfüllen eines Modal-Felds - das Gegenstück zu parseFormatValue.
+ * audiobook ohne percentMode -> "H:MM", sonst einfach die Zahl.
+ */
+export function formatValueForInput(format: BookFormat, value: number, percentMode = false): string {
+  if (format === "audiobook" && !percentMode) return formatHM(value);
+  return String(value);
 }
 
 /**
