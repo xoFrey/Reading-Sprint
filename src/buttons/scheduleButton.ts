@@ -10,10 +10,19 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     .setCustomId(CustomId.MODAL_SCHEDULE)
     .setTitle(Texts.schedule.modalTitle);
 
+  // Heutiges Datum als Vorschlag (Format TT.MM.JJJJ, passend zu
+  // utils/parsing.ts#parseGermanDateTime) - spart Tippen bei Sprints, die
+  // noch am selben Tag stattfinden, bleibt aber änderbar.
+  const today = new Date();
+  const todayFormatted = `${String(today.getDate()).padStart(2, "0")}.${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}.${today.getFullYear()}`;
+
   const dateInput = new TextInputBuilder()
     .setCustomId("date")
     .setLabel(Texts.schedule.dateLabel)
     .setPlaceholder("z.B. 24.12.2026")
+    .setValue(todayFormatted)
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
