@@ -61,6 +61,7 @@ export async function findOrCreateBook(
       existing.totalMinutes = undefined;
     }
     if (lastKnownProgress !== undefined) existing.lastKnownProgress = lastKnownProgress;
+    await existing.save();
     return existing;
   }
 
