@@ -22,6 +22,20 @@ export function getCurrentValue(book: ParticipantBook): number | undefined {
   return isAudiobookPercent(book) ? book.currentPercent : book.currentMinutes;
 }
 
+// Liefert den Startwert eines Buchs (Seite/Prozent/Minute, je nach Format).
+export function getStartValue(book: ParticipantBook): number | undefined {
+  if (book.format === "physical") return book.startPage;
+  if (book.format === "ebook") return book.startPercent;
+  return isAudiobookPercent(book) ? book.startPercent : book.startMinutes;
+}
+
+// Liefert den absoluten Zielwert eines Buchs, falls gesetzt (Seite/Prozent/Minute).
+export function getGoalValue(book: ParticipantBook): number | undefined {
+  if (book.format === "physical") return book.goalPage;
+  if (book.format === "ebook") return book.goalPercent;
+  return isAudiobookPercent(book) ? book.goalPercent : book.goalMinutes;
+}
+
 // Liefert Start- und Maximalwert für die Fortschritts-Validierung, in der
 // jeweils passenden Einheit (Seite/Prozent/Minute). Zentral hier, weil sonst
 // an mehreren Stellen (Buchwechsel, "Seite aktualisieren") dieselbe

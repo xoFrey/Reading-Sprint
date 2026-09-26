@@ -3,7 +3,7 @@ import { CustomId, buildCustomId, parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook } from "../services/sprintService";
-import { getFixStartFieldLabel } from "../services/bookProgress";
+import { getFixStartFieldLabel, getGoalFieldLabel, getGoalFieldPlaceholder } from "../services/bookProgress";
 
 /**
  * Öffnet das Modal zur Startwert-Korrektur - z.B. wenn der beim Auto-Join
@@ -31,7 +31,26 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
-  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(valueInput));
+  // Leer lassen = ein bereits gesetztes Ziel verschiebt sich automatisch mit
+  // (siehe fixBookStart) - ausfüllen = neues Ziel setzen/überschreiben.
+  const goalInput = new TextInputBuilder()
+    .setCustomId("goal")
+    .setLabel(
+      currentBook
+        ? getGoalFieldLabel(currentBook.format, currentBook.audiobookPercentMode === true)
+        : Texts.participant.updatePageLabel
+    )
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false);
+
+  if (currentBook) {
+    goalInput.setPlaceholder(getGoalFieldPlaceholder(currentBook.format, currentBook.audiobookPercentMode === true));
+  }
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(valueInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(goalInput)
+  );
 
   await interaction.showModal(modal);
 }

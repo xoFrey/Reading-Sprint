@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from "discord.js";
 import { parseCustomId } from "../config/constants";
 import { Texts } from "../config/texts";
-import { parseFormatValue } from "../services/bookProgress";
+import { parseFormatValue, parseGoalValue } from "../services/bookProgress";
 import { SprintParticipant } from "../database/models/SprintParticipant";
 import { getCurrentBook, fixBookStart } from "../services/sprintService";
 import { buildParticipantPanel } from "../embeds/participantPanelEmbed";
@@ -37,7 +37,16 @@ export async function execute(interaction: ModalSubmitInteraction): Promise<void
     return;
   }
 
-  await fixBookStart(participant, newValue);
+  // Ziel-Feld leer -> ein evtl. vorhandenes Ziel verschiebt sich automatisch
+  // mit (siehe fixBookStart). Ausgefüllt -> neues Ziel (Delta oder @absolut).
+  const goalRaw = interaction.fields.getTextInputValue("goal");
+  const parsedGoal = parseGoalValue(currentBook.format, goalRaw, percentMode);
+  if (parsedGoal === null) {
+    await interaction.reply({ content: Texts.join.invalidValue, ephemeral: true });
+    return;
+  }
+
+  await fixBookStart(participant, newValue, parsedGoal);
 
   const { embed, components } = buildParticipantPanel(participant);
   await interaction.reply({

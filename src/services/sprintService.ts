@@ -9,7 +9,7 @@ import { calculateSprintXP, applyXPGain } from "../xp/xpService";
 import { calculateLevelProgress } from "../xp/levelCurve";
 import { updateStreak } from "./streakService";
 import { findOrCreateBook, markBookFinished } from "./bookService";
-import { getPagesEquivalent, isBookGoalReached, isBookComplete } from "./bookProgress";
+import { getPagesEquivalent, isBookGoalReached, isBookComplete, getStartValue, getGoalValue } from "./bookProgress";
 
 // Ergebnis eines einzelnen Teilnehmers, wird für das Abschluss-Leaderboard genutzt.
 export interface ParticipantResult {
@@ -223,6 +223,15 @@ export async function updateBookProgress(
   await participant.save();
 }
 
+// Ziel-Eingabe bei der Startwert-Korrektur: wie bei NewBookInput kann entweder
+// ein Delta ("wie viel lesen") oder ein absoluter Zielwert ("@Zielwert")
+// übergeben werden. Wird gar nichts übergeben, verschiebt sich ein bereits
+// gesetztes Ziel automatisch mit (siehe fixBookStart).
+export interface FixStartGoalInput {
+  delta?: number;
+  absolute?: number;
+}
+
 /**
  * Korrigiert den STARTWERT des aktuell gelesenen Buchs (nicht nur den
  * aktuellen Stand wie updateBookProgress) - setzt beide auf denselben neuen
@@ -231,30 +240,58 @@ export async function updateBookProgress(
  * zwischen den Sprints außerhalb weitergelesen wurde: ohne diese Korrektur
  * würde die Differenz fälschlich als "in diesem Sprint gelesen" gezählt,
  * obwohl sie vor Sprintbeginn entstanden ist.
+ *
+ * Ziel-Logik:
+ * - goalInput mit absolute/delta gesetzt -> neues Ziel wird daraus berechnet
+ *   (überschreibt ein evtl. vorhandenes Ziel)
+ * - goalInput leer/undefined, aber ein Ziel war bereits gesetzt -> das Ziel
+ *   verschiebt sich automatisch um denselben Betrag wie der Startwert, damit
+ *   "wie viel noch zu lesen/hören bleibt" gleich bleibt (z.B. Start +1h
+ *   korrigiert -> Ziel ebenfalls +1h, damit weiterhin "30 Min ab jetzt" gilt)
+ * - kein goalInput und noch nie ein Ziel gesetzt -> bleibt weiterhin ungesetzt
  */
 export async function fixBookStart(
   participant: ISprintParticipant,
-  newValue: number
+  newValue: number,
+  goalInput?: FixStartGoalInput
 ): Promise<void> {
   const book = getCurrentBook(participant);
   if (!book) return;
+
+  const oldStart = getStartValue(book);
+  const oldGoal = getGoalValue(book);
+
+  let newGoal: number | undefined;
+  if (goalInput?.absolute !== undefined) {
+    newGoal = goalInput.absolute;
+  } else if (goalInput?.delta !== undefined) {
+    newGoal = newValue + goalInput.delta;
+  } else if (oldGoal !== undefined && oldStart !== undefined) {
+    newGoal = oldGoal + (newValue - oldStart);
+  } else {
+    newGoal = oldGoal;
+  }
 
   switch (book.format) {
     case "physical":
       book.startPage = newValue;
       book.currentPage = newValue;
+      book.goalPage = newGoal;
       break;
     case "ebook":
       book.startPercent = newValue;
       book.currentPercent = newValue;
+      book.goalPercent = newGoal;
       break;
     case "audiobook":
       if (book.audiobookPercentMode) {
         book.startPercent = newValue;
         book.currentPercent = newValue;
+        book.goalPercent = newGoal;
       } else {
         book.startMinutes = newValue;
         book.currentMinutes = newValue;
+        book.goalMinutes = newGoal;
       }
       break;
   }
